@@ -1,1 +1,1 @@
-print("La hermana de kevin esta explotada mal")
+print("Dios nos ayude a aprobar esta materia 🙏")
