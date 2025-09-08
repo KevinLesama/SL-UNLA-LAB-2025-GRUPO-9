@@ -5,3 +5,10 @@ Kevin Lesama Soto
 Nahuel Garcia
 Orion Quimey Jaime Adell
 Agustin Nicolas Mancini
+
+arc
+app.py
+databse.bd
+database.py
+models.py
+requierements.txt

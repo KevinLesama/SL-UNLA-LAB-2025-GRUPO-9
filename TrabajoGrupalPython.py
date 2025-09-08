@@ -1,1 +1,1 @@
-print("Dios nos ayude a aprobar esta materia 🙏🙏🙏")
+print("Dios nos ayude a aprobar esta materia 🙏")
