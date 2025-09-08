@@ -5,5 +5,3 @@ Kevin Lesama Soto
 Nahuel Garcia
 Orion Quimey Jaime Adell
 Agustin Nicolas Mancini
-
-hola como
