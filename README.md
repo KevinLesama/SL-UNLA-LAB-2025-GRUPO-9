@@ -6,4 +6,4 @@ Nahuel Garcia
 Orion Quimey Jaime Adell
 Agustin Nicolas Mancini
 
-hola comoi estas
+hola como
