@@ -20,3 +20,14 @@ git commit -m "nombreDeCommit sin comillas" = Crea el commit y le asignas el nom
 git remote add origin "url del repo sin las comillas"= Linkeea un proyecto con su repositorio de github. No lo usen ya lo hicimos.
 git push -u = Sirve para subir tu commit a github.
 git pull = Sirve para bajarse todos los cambios que hicimos en nuestro proyecto. Si yo agrego algo ustedes usan git pull para bajarse lo que hice yo.
+
+Si les sale un error al activar el entorno virtual que dice que la ejecucion de scripts esta deshabilitada tienen 2 opciones, habilitarla temporalmente o permanente.
+
+Para temporal buscan en windows "powershell" y lo abren como administrador.
+Pegan este comando: Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+le dan a si a todo
+Con esto lo habilitan una vez, cuando cierren la terminal de powershell se les va a deshabilitar.
+
+Para hacerlo permanente, hacen lo mismo pero en vez de ese comando pongan este:
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+le dan a si a todo y listo.
