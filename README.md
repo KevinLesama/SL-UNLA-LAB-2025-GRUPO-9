@@ -6,12 +6,13 @@ Nahuel Garcia
 Orion Quimey Jaime Adell
 Agustin Nicolas Mancini
 
-arc
+archivos utiles a crear
 app.py
 databse.bd
 database.py
 models.py
 requierements.txt
+
 
 comandos utiles de git:
 git init = Sirve para iniciar un git. No lo usen ya esta hecho.
@@ -37,3 +38,22 @@ escriban en la consola "cd .\.venv\Scripts" le dan enter y despues ponen ".\acti
 RECUERDEN QUE TIENEN QUE SALIR DESPUES NO SE OLVIDEN O LOS MATO.
 Para volver a la carpeta raiz del proyecto hacen asi "cd ..\..\"
 no rompan nada porfavor 🙏🏻🙏🏻
+
+consignas: 
+1. Crear entorno virtual con venv e instalar dependencias.
+
+
+2. Crear repo en GitHub, clonar y subir proyecto base con README.md.
+
+
+3. Definir modelos con SQLAlchemy: Persona y Turno.
+
+
+4. Armar endpoints CRUD de Personas.
+
+
+5. Armar endpoints CRUD de Turnos + reglas de negocio.
+
+
+6. Implementar endpoint de turnos disponibles.
+preguntar al profe cualquier cosa
