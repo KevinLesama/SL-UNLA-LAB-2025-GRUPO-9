@@ -31,3 +31,9 @@ Con esto lo habilitan una vez, cuando cierren la terminal de powershell se les v
 Para hacerlo permanente, hacen lo mismo pero en vez de ese comando pongan este:
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 le dan a si a todo y listo.
+
+Para activar el entorno deben ir a la carpeta de .venv PERO DESDE LA CONSOLA.
+escriban en la consola "cd .\.venv\Scripts" le dan enter y despues ponen ".\activate"
+RECUERDEN QUE TIENEN QUE SALIR DESPUES NO SE OLVIDEN O LOS MATO.
+Para volver a la carpeta raiz del proyecto hacen asi "cd ..\..\"
+no rompan nada porfavor 🙏🏻🙏🏻
