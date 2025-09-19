@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 class Persona(Base):
-    tablename="personas"
+    __tablename__="personas"
     id = Column(Integer, primary_key=True, autoincrement=True)
     dni = Column(Integer)
     nombre = Column(String)
@@ -14,7 +14,7 @@ class Persona(Base):
     turnos = relationship("Turnos", back_populates="persona")
 
 class Turnos(Base):
-    tablename="turnos"
+    __tablename__="turnos"
     id = Column(Integer, primary_key=True, autoincrement=True)
     fecha = Column(String)
     hora = Column(String)
