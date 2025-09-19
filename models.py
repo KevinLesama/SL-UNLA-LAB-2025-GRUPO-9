@@ -11,6 +11,7 @@ class Persona(Base):
     telefono = Column(String)
     fecha_de_nacimiento = Column(String)
     habilitado = Column(String, default="si")
+    turnos = relationship("Turnos", back_populates="persona")
 
 class Turnos(Base):
     tablename="turnos"
@@ -18,7 +19,10 @@ class Turnos(Base):
     fecha = Column(String)
     hora = Column(String)
     estado = Column(String, default="pendiente")
-    persona_id = Column(Integer , ForeignKey('persona.id'))
+    persona_id = Column(Integer , ForeignKey('personas.id'))
+    persona = relationship("Persona", back_populates="turnos")
+    #agregamos el back_populates en ambas clases para poder llamar los turnos de la persona
+    #esto lo podemos usar para traer los turnos de una persona en particular cancelados
 
 
 
