@@ -87,4 +87,59 @@ async def crear_persona(request: Request):
     session.close()
     return resultado
 
+@app.put("/personas/{id}")
+async def modificar_persona(id: int, request: Request):
+    session = Session()
+    datos = await request.json()
+    persona = session.query(Persona).get(id)
+    if persona is None:
+        session.close()
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
 
+    
+    if "dni" in datos and datos["dni"] != persona.dni:
+        if session.query(Persona).filter_by(dni=datos["dni"]).first():
+            session.close()
+            raise HTTPException(status_code=400, detail="El DNI ya está registrado")
+        persona.dni = datos["dni"]
+    if "email" in datos and datos["email"] != persona.email:
+        if session.query(Persona).filter_by(email=datos["email"]).first():
+            session.close()
+            raise HTTPException(status_code=400, detail="El email ya está registrado")
+        persona.email = datos["email"]
+    if "telefono" in datos and datos["telefono"] != persona.telefono:
+        if session.query(Persona).filter_by(telefono=datos["telefono"]).first():
+            session.close()
+            raise HTTPException(status_code=400, detail="El teléfono ya está registrado")
+        persona.telefono = datos["telefono"]
+
+    persona.nombre = datos.get("nombre", persona.nombre)
+    persona.fecha_de_nacimiento = datos.get("fecha_de_nacimiento", persona.fecha_de_nacimiento)
+    persona.habilitado = datos.get("habilitado", persona.habilitado)
+
+    session.commit()
+    resultado = {
+        "id": persona.id,
+        "dni": persona.dni,
+        "nombre": persona.nombre,
+        "email": persona.email,
+        "telefono": persona.telefono,
+        "fecha_de_nacimiento": persona.fecha_de_nacimiento,
+        "habilitado": persona.habilitado
+    }
+    session.close()
+    return resultado
+
+
+@app.delete("/personas/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_persona(id: int):
+    session = Session()
+    persona = session.query(Persona).get(id)
+    if persona is None:
+        session.close()
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
+    session.delete(persona)
+    
+    session.commit()
+    session.close()
+    return {"mensaje": "Persona eliminada"}
