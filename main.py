@@ -1,10 +1,11 @@
-
 from fastapi import FastAPI, HTTPException, Request, status
 from models import Persona
 from models import Turnos
 from database import Session, engine
 from models import Base
 from utils import calcular_edad
+from utils import turnoDisponible
+from utils import HORARIOS_VALIDOS
 
 app = FastAPI()
 Base.metadata.create_all(engine)
@@ -196,11 +197,25 @@ def obtener_turno(id: int):
 async def crear_turno(request: Request):
     session = Session()
     datos = await request.json()
-
+    fecha = datos.get("fecha")
+    hora = datos.get("hora")
     persona = session.query(Persona).get(datos.get("persona_id"))
     if persona is None:
         session.close()
         raise HTTPException(status_code=400, detail="Persona no encontrada")
+
+    if not fecha or not hora:
+        session.close()
+        raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
+
+    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora")) and datos.get("estado") != "cancelado":
+        session.close()
+        raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
+
+    if hora not in HORARIOS_VALIDOS:
+        session.close()
+        raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
+
 
     nuevo_turno = Turnos(
         fecha=datos.get("fecha"),
@@ -227,6 +242,8 @@ async def modificar_turno(id: int, request: Request):
     session = Session()
     datos = await request.json()
     turno = session.query(Turnos).get(id)
+    fecha = datos.get("fecha")
+    hora = datos.get("hora")
     if turno is None:
         session.close()
         raise HTTPException(status_code=404, detail="Turno no encontrado")
@@ -241,6 +258,18 @@ async def modificar_turno(id: int, request: Request):
             session.close()
             raise HTTPException(status_code=400, detail="Persona no encontrada")
         turno.persona_id = datos["persona_id"]
+
+    if not fecha or not hora:
+        session.close()
+        raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
+
+    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora")) and datos.get("estado") != "cancelado":
+        session.close()
+        raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
+
+    if hora not in HORARIOS_VALIDOS:
+        session.close()
+        raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
 
     session.commit()
     resultado = {
