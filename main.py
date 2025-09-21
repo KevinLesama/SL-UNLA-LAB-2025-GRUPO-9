@@ -4,6 +4,7 @@ from models import Persona
 from models import Turnos
 from database import Session, engine
 from models import Base
+from utils import calcular_edad
 
 app = FastAPI()
 Base.metadata.create_all(engine)
@@ -12,18 +13,22 @@ Base.metadata.create_all(engine)
 def listar_personas():
     session = Session()
     personas = session.query(Persona).all()
-    resultado = [
-        {
+    resultado = []
+    for p in personas:
+        try:
+            edad = calcular_edad(p.fecha_de_nacimiento)
+        except Exception:
+            edad = None
+        resultado.append({
             "id": p.id,
             "dni": p.dni,
             "nombre": p.nombre,
             "email": p.email,
             "telefono": p.telefono,
             "fecha_de_nacimiento": p.fecha_de_nacimiento,
+            "edad": edad,
             "habilitado": p.habilitado
-        }
-        for p in personas
-    ]
+        })
     session.close()
     return resultado
 
@@ -34,6 +39,10 @@ def obtener_persona(id: int):
     if persona is None:
         session.close()
         raise HTTPException(status_code=404, detail="Persona no encontrada")
+    try:
+        edad = calcular_edad(persona.fecha_de_nacimiento)
+    except Exception:
+        edad = None
     resultado = {
         "id": persona.id,
         "dni": persona.dni,
@@ -41,6 +50,7 @@ def obtener_persona(id: int):
         "email": persona.email,
         "telefono": persona.telefono,
         "fecha_de_nacimiento": persona.fecha_de_nacimiento,
+        "edad": edad,
         "habilitado": persona.habilitado
     }
     session.close()
@@ -83,6 +93,7 @@ async def crear_persona(request: Request):
         "email": nueva_persona.email,
         "telefono": nueva_persona.telefono,
         "fecha_de_nacimiento": nueva_persona.fecha_de_nacimiento,
+        "edad": calcular_edad(nueva_persona.fecha_de_nacimiento),
         "habilitado": nueva_persona.habilitado
     }
     session.close()
