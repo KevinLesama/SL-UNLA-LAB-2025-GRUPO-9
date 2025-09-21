@@ -310,24 +310,5 @@ def eliminar_turno(id: int):
     session.close()
     return {"mensaje": "Turno eliminado"}
 
-@app.get("/turnos-disponibles")
-def turnos_disponibles(fecha: str):
-    session = Session()
-    try:
-        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
-    except ValueError:
-        session.close()
-        raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
 
-    turnos_ocupados = session.query(Turnos).filter(
-        Turnos.fecha == fecha_dt,
-        Turnos.estado != "cancelado"   
-    ).all()
-
-    horarios_ocupados = {t.hora for t in turnos_ocupados}
-
-    horarios_libres = [h for h in HORARIOS_VALIDOS if h not in horarios_ocupados]
-
-    session.close()
-    return {"fecha": fecha, "horarios_disponibles": horarios_libres}
 
