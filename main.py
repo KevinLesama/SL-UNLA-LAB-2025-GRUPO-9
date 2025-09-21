@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI, HTTPException, Request, status
 from models import Persona
+from models import Turnos
 from database import Session, engine
 from models import Base
 
@@ -143,3 +144,69 @@ def eliminar_persona(id: int):
     session.commit()
     session.close()
     return {"mensaje": "Persona eliminada"}
+
+@app.get("/turnos/")
+def listar_turnos():
+    session = Session()
+    turnos = session.query(Turnos).all()
+    resultado = [
+        {
+            "id": t.id,
+            "fecha": t.fecha,
+            "hora": t.hora,
+            "estado": t.estado,
+            "persona_id": t.persona_id
+        }
+        for t in turnos
+    ]
+    session.close()
+    return resultado
+
+
+@app.get("/turnos/{id}")
+def obtener_turno(id: int):
+    session = Session()
+    turno = session.query(Turnos).get(id)
+    if turno is None:
+        session.close()
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    resultado = {
+        "id": turno.id,
+        "fecha": turno.fecha,
+        "hora": turno.hora,
+        "estado": turno.estado,
+        "persona_id": turno.persona_id
+    }
+    session.close()
+    return resultado
+
+
+@app.post("/turnos/", status_code=status.HTTP_201_CREATED)
+async def crear_turno(request: Request):
+    session = Session()
+    datos = await request.json()
+
+    persona = session.query(Persona).get(datos.get("persona_id"))
+    if persona is None:
+        session.close()
+        raise HTTPException(status_code=400, detail="Persona no encontrada")
+
+    nuevo_turno = Turnos(
+        fecha=datos.get("fecha"),
+        hora=datos.get("hora"),
+        estado=datos.get("estado", "pendiente"),
+        persona_id=datos.get("persona_id")
+    )
+    session.add(nuevo_turno)
+    session.commit()
+    session.refresh(nuevo_turno)
+
+    resultado = {
+        "id": nuevo_turno.id,
+        "fecha": nuevo_turno.fecha,
+        "hora": nuevo_turno.hora,
+        "estado": nuevo_turno.estado,
+        "persona_id": nuevo_turno.persona_id
+    }
+    session.close()
+    return resultado
