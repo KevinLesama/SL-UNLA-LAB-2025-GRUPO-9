@@ -13,13 +13,30 @@ def turnoDisponible(session, fecha, hora):
     
     horaFin = horaInicio + timedelta(minutes=30)
 
-    turnos = session.query(Turnos).filter_by(fecha=fecha).all()
+    turnos = session.query(Turnos).filter(Turnos.fecha == fecha).all()
+
     for t in turnos:
         tInicio = datetime.strptime(t.hora, "%H:%M")
         tFin = tInicio + timedelta(minutes=30)
+
         if (horaInicio < tFin and horaFin > tInicio):
             return False
     return True
+
+def turnoDisponibleEstado(session, fecha, hora):
+    try:
+        horaInicio = datetime.strptime(hora, "%H:%M")
+    except ValueError:
+        return False
+    
+    horaFin = horaInicio + timedelta(minutes=30)
+
+    turnos = session.query(Turnos).filter_by(fecha=fecha, hora=hora).all()
+    for t in turnos:
+        if t.estado != "cancelado":
+            return False
+    return True
+#si el turno esta cancelado retorna true
 
 HORARIOS_VALIDOS = [
     "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",

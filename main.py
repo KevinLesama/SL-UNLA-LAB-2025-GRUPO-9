@@ -5,7 +5,7 @@ from database import Session, engine
 from datetime import datetime, date, timedelta
 from models import Base
 from utils import calcular_edad
-from utils import turnoDisponible
+from utils import turnoDisponible, turnoDisponibleEstado
 from utils import HORARIOS_VALIDOS
 
 app = FastAPI()
@@ -209,17 +209,16 @@ async def crear_turno(request: Request):
         session.close()
         raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
 
-    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora")) :
+    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora"))and not turnoDisponibleEstado(session, datos.get("fecha"), datos.get("hora")):
         session.close()
         raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
-    """if persona.habilitado != "si":
-        session.close()
-        raise HTTPException(status_code=400, detail="La persona no está habilitada para solicitar turnos")
-   """
+    
     if hora not in HORARIOS_VALIDOS:
         session.close()
         raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
 
+        
+    
     seis_meses_atras = date.today() - timedelta(days=180)
     turnos_cancelados = (
         session.query(Turnos).filter(
@@ -310,3 +309,25 @@ def eliminar_turno(id: int):
     session.commit()
     session.close()
     return {"mensaje": "Turno eliminado"}
+
+@app.get("/turnos-disponibles")
+def turnos_disponibles(fecha: str):
+    session = Session()
+    try:
+        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
+    except ValueError:
+        session.close()
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
+
+    turnos_ocupados = session.query(Turnos).filter(
+        Turnos.fecha == fecha_dt,
+        Turnos.estado != "cancelado"   
+    ).all()
+
+    horarios_ocupados = {t.hora for t in turnos_ocupados}
+
+    horarios_libres = [h for h in HORARIOS_VALIDOS if h not in horarios_ocupados]
+
+    session.close()
+    return {"fecha": fecha, "horarios_disponibles": horarios_libres}
+
