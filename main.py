@@ -221,3 +221,47 @@ async def crear_turno(request: Request):
     }
     session.close()
     return resultado
+
+@app.put("/turnos/{id}")
+async def modificar_turno(id: int, request: Request):
+    session = Session()
+    datos = await request.json()
+    turno = session.query(Turnos).get(id)
+    if turno is None:
+        session.close()
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+
+    turno.fecha = datos.get("fecha", turno.fecha)
+    turno.hora = datos.get("hora", turno.hora)
+    turno.estado = datos.get("estado", turno.estado)
+
+    if "persona_id" in datos:
+        persona = session.query(Persona).get(datos["persona_id"])
+        if persona is None:
+            session.close()
+            raise HTTPException(status_code=400, detail="Persona no encontrada")
+        turno.persona_id = datos["persona_id"]
+
+    session.commit()
+    resultado = {
+        "id": turno.id,
+        "fecha": turno.fecha,
+        "hora": turno.hora,
+        "estado": turno.estado,
+        "persona_id": turno.persona_id
+    }
+    session.close()
+    return resultado
+
+
+@app.delete("/turnos/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_turno(id: int):
+    session = Session()
+    turno = session.query(Turnos).get(id)
+    if turno is None:
+        session.close()
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    session.delete(turno)
+    session.commit()
+    session.close()
+    return {"mensaje": "Turno eliminado"}
