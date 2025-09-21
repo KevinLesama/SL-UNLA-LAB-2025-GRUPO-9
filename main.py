@@ -209,15 +209,36 @@ async def crear_turno(request: Request):
         session.close()
         raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
 
-    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora")) or datos.get("estado") == "cancelado":
+    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora")) :
         session.close()
         raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
-
+    """if persona.habilitado != "si":
+        session.close()
+        raise HTTPException(status_code=400, detail="La persona no está habilitada para solicitar turnos")
+   """
     if hora not in HORARIOS_VALIDOS:
         session.close()
         raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
 
-    
+    seis_meses_atras = date.today() - timedelta(days=180)
+    turnos_cancelados = (
+        session.query(Turnos).filter(
+            Turnos.persona_id == persona.id,
+            Turnos.estado == "cancelado",
+            Turnos.fecha >= seis_meses_atras
+        ).count()
+    )
+    if turnos_cancelados >= 5 :
+        persona.habilitado = "no"
+        session.commit()
+        session.close()
+        raise HTTPException(
+            status_code=400,
+            detail="La persona tiene 5 o más turnos cancelados en los últimos 6 meses"
+        )
+    else:
+        persona.habilitado = "si"
+        session.commit()
 
     nuevo_turno = Turnos(
         fecha=datos.get("fecha"),
