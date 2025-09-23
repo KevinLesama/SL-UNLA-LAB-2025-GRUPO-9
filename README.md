@@ -57,3 +57,11 @@ consignas:
 
 6. Implementar endpoint de turnos disponibles.
 preguntar al profe cualquier cosa
+
+
+
+LINKS PARA EL TP:
+
+LINK DEL DRIVE PUBLICO CON EL VIDEO: https://drive.google.com/drive/folders/1YXLrVAWOYCZLvTMVNFavq8h7SRFEQ9wq?usp=drive_link
+
+LINK DE LA COLLECTION CON LOS ENDPOINTS: https://www.postman.com/agusmancini/workspace/my-workspace/collection/29397381-a19b14c9-3741-4166-bbc8-fb48b92470be?action=share&creator=29397381
