@@ -1,12 +1,8 @@
 from fastapi import FastAPI, HTTPException, Request, status
-from models import Persona
-from models import Turnos
+from models import Persona, Turnos, Base
 from database import Session, engine
 from datetime import datetime, date, timedelta
-from models import Base
-from utils import calcular_edad
-from utils import turnoDisponible, turnoDisponibleEstado
-from utils import HORARIOS_VALIDOS
+from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, HORARIOS_VALIDOS
 
 app = FastAPI()
 Base.metadata.create_all(engine)
