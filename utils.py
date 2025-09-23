@@ -1,6 +1,7 @@
 from datetime import datetime, date, timedelta
 from models import Turnos
 
+#Hecho por Nahuel Garcia y Agustin Nicolas Mancini
 def calcular_edad(fecha_nacimiento):
     if isinstance(fecha_nacimiento, str):
         fecha_nac = datetime.strptime(fecha_nacimiento, "%Y-%m-%d").date()
@@ -12,6 +13,7 @@ def calcular_edad(fecha_nacimiento):
     hoy = date.today()
     return hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
 
+#Hecho por Agustin Nicolas Mancini
 def turnoDisponible(session, fecha, hora):
     try:
         horaInicio = datetime.strptime(hora, "%H:%M")
@@ -30,6 +32,7 @@ def turnoDisponible(session, fecha, hora):
             return False
     return True
 
+#Hecho por Kevin Lesama Soto
 def turnoDisponibleEstado(session, fecha, hora):
     try:
         horaInicio = datetime.strptime(hora, "%H:%M")
@@ -45,6 +48,7 @@ def turnoDisponibleEstado(session, fecha, hora):
     return True
 #si el turno esta cancelado retorna true
 
+#Hecho por Agustin Nicolas Mancini
 HORARIOS_VALIDOS = [
     "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
     "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",

@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from base import Base
 
+#Hecho por Nahuel Garcia
 class Persona(Base):
     __tablename__ = "personas"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -13,6 +14,7 @@ class Persona(Base):
     habilitado = Column(String, default="si")
     turnos = relationship("Turnos", back_populates="persona")
 
+#Hecho por Kevin Lesama Soto
 class Turnos(Base):
     __tablename__ = "turnos"
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -7,6 +7,7 @@ from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, HORARIO
 app = FastAPI()
 Base.metadata.create_all(engine)
 
+#Hecho por Kevin Lesama Soto
 @app.get("/personas/")
 def listar_personas():
     session = Session()
@@ -30,6 +31,7 @@ def listar_personas():
     session.close()
     return resultado
 
+#Hecho por Kevin Lesama Soto
 @app.get("/personas/{id}")
 def obtener_persona(id: int):
     session = Session()
@@ -54,6 +56,7 @@ def obtener_persona(id: int):
     session.close()
     return resultado
 
+#Hecho por Kevin Lesama Sotos
 @app.post("/personas/")
 async def crear_persona(request: Request):
     session = Session()
@@ -113,6 +116,7 @@ async def crear_persona(request: Request):
     session.close()
     return resultado
 
+#Hecho por Nahuel Garcia
 @app.put("/personas/{persona_id}")
 async def modificar_persona(persona_id: int, request: Request):
     session = Session()
@@ -180,7 +184,7 @@ async def modificar_persona(persona_id: int, request: Request):
     return resultado
 
 
-
+#Hecho por Nahuel Garcia
 @app.delete("/personas/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_persona(id: int):
     session = Session()
@@ -194,6 +198,7 @@ def eliminar_persona(id: int):
     session.close()
     return {"mensaje": "Persona eliminada"}
 
+#Hecho por Agustin Nicolas Mancini
 @app.get("/turnos/")
 def listar_turnos():
     session = Session()
@@ -211,7 +216,7 @@ def listar_turnos():
     session.close()
     return resultado
 
-
+#Hecho por Agustin Nicolas Mancini
 @app.get("/turnos/{id}")
 def obtener_turno(id: int):
     session = Session()
@@ -229,7 +234,7 @@ def obtener_turno(id: int):
     session.close()
     return resultado
 
-
+#Hecho por Agustin Nicolas Mancini
 @app.post("/turnos/", status_code=status.HTTP_201_CREATED)
 async def crear_turno(request: Request):
     session = Session()
@@ -295,6 +300,7 @@ async def crear_turno(request: Request):
     session.close()
     return resultado
 
+#Hecho por Orion Jaime
 @app.put("/turnos/{id}")
 async def modificar_turno(id: int, request: Request):
     session = Session()
@@ -317,11 +323,6 @@ async def modificar_turno(id: int, request: Request):
             raise HTTPException(status_code=400, detail="Persona no encontrada")
         turno.persona_id = datos["persona_id"]
 
-
-
-
-
-
     session.commit()
     resultado = {
         "id": turno.id,
@@ -333,7 +334,7 @@ async def modificar_turno(id: int, request: Request):
     session.close()
     return resultado
 
-
+#Hecho por Orion Jaime
 @app.delete("/turnos/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_turno(id: int):
     session = Session()
@@ -346,7 +347,7 @@ def eliminar_turno(id: int):
     session.close()
     return {"mensaje": "Turno eliminado"}
 
-
+#Hecho por Kevin Lesama Soto
 @app.get("/turnos-disponibles")
 def turnos_disponibles(fecha: str):
     session = Session()
