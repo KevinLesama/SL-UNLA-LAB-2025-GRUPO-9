@@ -1,7 +1,14 @@
 from datetime import datetime, date, timedelta
 from models import Turnos
-def calcular_edad(fecha_nacimiento_str):
-    fecha_nac = datetime.strptime(fecha_nacimiento_str, "%Y-%m-%d").date()
+
+def calcular_edad(fecha_nacimiento):
+    if isinstance(fecha_nacimiento, str):
+        fecha_nac = datetime.strptime(fecha_nacimiento, "%Y-%m-%d").date()
+    elif isinstance(fecha_nacimiento, date):
+        fecha_nac = fecha_nacimiento
+    else:
+        raise ValueError("Formato de fecha inválido")
+
     hoy = date.today()
     return hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
 

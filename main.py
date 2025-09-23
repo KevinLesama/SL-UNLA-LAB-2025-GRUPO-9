@@ -54,28 +54,43 @@ def obtener_persona(id: int):
     session.close()
     return resultado
 
-@app.post("/personas/", status_code=status.HTTP_201_CREATED)
+@app.post("/personas/")
 async def crear_persona(request: Request):
     session = Session()
     datos = await request.json()
-    if session.query(Persona).filter_by(dni=datos.get("dni")).first():
+
+    if session.query(Persona).filter_by(dni=datos["dni"]).first():
         session.close()
         raise HTTPException(status_code=400, detail="El DNI ya está registrado")
-    if session.query(Persona).filter_by(email=datos.get("email")).first():
+    if session.query(Persona).filter_by(email=datos["email"]).first():
         session.close()
         raise HTTPException(status_code=400, detail="El email ya está registrado")
-    if session.query(Persona).filter_by(telefono=datos.get("telefono")).first():
+    if session.query(Persona).filter_by(telefono=datos["telefono"]).first():
         session.close()
         raise HTTPException(status_code=400, detail="El teléfono ya está registrado")
 
+    if "telefono" in datos:
+        try:
+            datos["telefono"] = int(datos["telefono"])
+        except ValueError:
+            session.close()
+            raise HTTPException(status_code=400, detail="El teléfono debe ser un número")
+    
+    try:
+        fecha_nac = datetime.strptime(datos["fecha_de_nacimiento"], "%Y-%m-%d").date()
+    except ValueError:
+        session.close()
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido, use YYYY-MM-DD")
+
     nueva_persona = Persona(
-        dni=datos.get("dni"),
-        nombre=datos.get("nombre"),
-        email=datos.get("email"),
-        telefono=datos.get("telefono"),
-        fecha_de_nacimiento=datos.get("fecha_de_nacimiento"),
+        dni=datos["dni"],
+        nombre=datos["nombre"],
+        email=datos["email"],
+        telefono=int(datos["telefono"]),
+        fecha_de_nacimiento=fecha_nac,
         habilitado=datos.get("habilitado", "si")
     )
+
     session.add(nueva_persona)
     try:
         session.commit()
@@ -83,62 +98,87 @@ async def crear_persona(request: Request):
     except Exception:
         session.rollback()
         session.close()
-        raise HTTPException(status_code=400, detail="Error al crear persona (email duplicado o datos inválidos)")
+        raise HTTPException(status_code=400, detail="Error al crear persona")
+    
     resultado = {
         "id": nueva_persona.id,
         "dni": nueva_persona.dni,
         "nombre": nueva_persona.nombre,
         "email": nueva_persona.email,
         "telefono": nueva_persona.telefono,
-        "fecha_de_nacimiento": nueva_persona.fecha_de_nacimiento,
+        "fecha_de_nacimiento": nueva_persona.fecha_de_nacimiento.isoformat(),
         "edad": calcular_edad(nueva_persona.fecha_de_nacimiento),
         "habilitado": nueva_persona.habilitado
     }
     session.close()
     return resultado
 
-@app.put("/personas/{id}")
-async def modificar_persona(id: int, request: Request):
+@app.put("/personas/{persona_id}")
+async def modificar_persona(persona_id: int, request: Request):
     session = Session()
-    datos = await request.json()
-    persona = session.query(Persona).get(id)
-    if persona is None:
+    persona = session.query(Persona).get(persona_id)
+    if not persona:
         session.close()
         raise HTTPException(status_code=404, detail="Persona no encontrada")
 
-    
+    datos = await request.json()
+
+    if "telefono" in datos:
+        try:
+            datos["telefono"] = int(datos["telefono"])
+        except ValueError:
+            session.close()
+            raise HTTPException(status_code=400, detail="El teléfono debe ser un número")
+
     if "dni" in datos and datos["dni"] != persona.dni:
         if session.query(Persona).filter_by(dni=datos["dni"]).first():
             session.close()
             raise HTTPException(status_code=400, detail="El DNI ya está registrado")
         persona.dni = datos["dni"]
+
     if "email" in datos and datos["email"] != persona.email:
         if session.query(Persona).filter_by(email=datos["email"]).first():
             session.close()
             raise HTTPException(status_code=400, detail="El email ya está registrado")
         persona.email = datos["email"]
+
     if "telefono" in datos and datos["telefono"] != persona.telefono:
         if session.query(Persona).filter_by(telefono=datos["telefono"]).first():
             session.close()
             raise HTTPException(status_code=400, detail="El teléfono ya está registrado")
         persona.telefono = datos["telefono"]
 
-    persona.nombre = datos.get("nombre", persona.nombre)
-    persona.fecha_de_nacimiento = datos.get("fecha_de_nacimiento", persona.fecha_de_nacimiento)
-    persona.habilitado = datos.get("habilitado", persona.habilitado)
+    if "fecha_de_nacimiento" in datos:
+        try:
+            datos["fecha_de_nacimiento"] = datetime.strptime(datos["fecha_de_nacimiento"], "%Y-%m-%d").date()
+        except ValueError:
+            session.close()
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, use YYYY-MM-DD")
 
-    session.commit()
+    for campo, valor in datos.items():
+        setattr(persona, campo, valor)
+
+    try:
+        session.commit()
+        session.refresh(persona)
+    except Exception:
+        session.rollback()
+        session.close()
+        raise HTTPException(status_code=400, detail="Error al modificar persona")
+
     resultado = {
         "id": persona.id,
         "dni": persona.dni,
         "nombre": persona.nombre,
         "email": persona.email,
         "telefono": persona.telefono,
-        "fecha_de_nacimiento": persona.fecha_de_nacimiento,
+        "fecha_de_nacimiento": persona.fecha_de_nacimiento.isoformat(),
+        "edad": calcular_edad(persona.fecha_de_nacimiento),
         "habilitado": persona.habilitado
     }
     session.close()
     return resultado
+
 
 
 @app.delete("/personas/{id}", status_code=status.HTTP_204_NO_CONTENT)

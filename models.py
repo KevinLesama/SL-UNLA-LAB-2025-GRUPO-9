@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Date 
 from sqlalchemy.orm import relationship
 from base import Base
 
@@ -8,8 +8,8 @@ class Persona(Base):
     dni = Column(Integer)
     nombre = Column(String)
     email = Column(String)
-    telefono = Column(String)
-    fecha_de_nacimiento = Column(String)
+    telefono = Column(Integer)
+    fecha_de_nacimiento = Column(Date)
     habilitado = Column(String, default="si")
     turnos = relationship("Turnos", back_populates="persona")
 
