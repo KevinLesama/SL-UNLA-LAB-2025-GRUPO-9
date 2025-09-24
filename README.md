@@ -62,8 +62,7 @@ preguntar al profe cualquier cosa
 
 LINKS PARA EL TP:
 
-LINK DEL DRIVE PUBLICO CON EL VIDEO: https://drive.google.com/drive/folders/1YXLrVAWOYCZLvTMVNFavq8h7SRFEQ9wq?usp=drive_link
+LINK DEL DRIVE PUBLICO CON EL VIDEO Y EL .JSON: https://drive.google.com/drive/folders/1PTMpZh_NmgFHLbfpMaf1t3cN3VyGbOBU?usp=drive_link
 
 LINK DE LA COLLECTION CON LOS ENDPOINTS: https://www.postman.com/agusmancini/workspace/my-workspace/collection/29397381-a19b14c9-3741-4166-bbc8-fb48b92470be?action=share&creator=29397381
 
-Comentarios: Nuestro compañero Kevin Lesama no pudo hacer su video por problemas en su casa, les pedimos disculpas.
