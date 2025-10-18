@@ -113,7 +113,7 @@ def obtener_persona(id: int):
 
 """
 
-#Hecho por Kevin Lesama Sotos
+#Hecho por Kevin Lesama Soto
 @app.post("/personas/")
 async def crear_persona(request: Request):
     session = Session()
