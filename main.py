@@ -6,7 +6,7 @@ from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, HORARIO
 
 app = FastAPI()
 Base.metadata.create_all(engine)
-
+"""
 #Hecho por Kevin Lesama Soto
 @app.get("/personas/")
 def listar_personas():
@@ -30,7 +30,34 @@ def listar_personas():
         })
     session.close()
     return resultado
-
+    """
+@app.get("/personas/")
+def listar_personas():
+    session = Session()
+    try:
+        personas = session.query(Persona).all()
+        resultado = []
+        for p in personas:
+            try:
+                edad = calcular_edad(p.fecha_de_nacimiento)
+            except Exception:
+                edad = None
+            resultado.append({
+                "id": p.id,
+                "dni": p.dni,
+                "nombre": p.nombre,
+                "email": p.email,
+                "telefono": p.telefono,
+                "fecha_de_nacimiento": p.fecha_de_nacimiento,
+                "edad": edad,
+                "habilitado": p.habilitado
+            })
+        return resultado
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de personas: {str(e)}")
+    finally:
+        session.close()
+"""
 #Hecho por Kevin Lesama Soto
 @app.get("/personas/{id}")
 def obtener_persona(id: int):
@@ -55,6 +82,36 @@ def obtener_persona(id: int):
     }
     session.close()
     return resultado
+"""
+@app.get("/personas/{id}")
+def obtener_persona(id: int):
+    session = Session()
+    try:
+        persona = session.query(Persona).get(id)
+        if persona is None:
+            raise HTTPException(status_code=404, detail="Persona no encontrada")
+        try:
+            edad = calcular_edad(persona.fecha_de_nacimiento)
+        except Exception:
+            edad = None
+        return {
+            "id": persona.id,
+            "dni": persona.dni,
+            "nombre": persona.nombre,
+            "email": persona.email,
+            "telefono": persona.telefono,
+            "fecha_de_nacimiento": persona.fecha_de_nacimiento,
+            "edad": edad,
+            "habilitado": persona.habilitado
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener la persona: {str(e)}")
+    finally:
+        session.close()
+
+"""
 
 #Hecho por Kevin Lesama Sotos
 @app.post("/personas/")
@@ -115,6 +172,61 @@ async def crear_persona(request: Request):
     }
     session.close()
     return resultado
+"""
+@app.post("/personas/")
+async def crear_persona(request: Request):
+    session = Session()
+    try:
+        datos = await request.json()
+
+        if session.query(Persona).filter_by(dni=datos["dni"]).first():
+            raise HTTPException(status_code=400, detail="El DNI ya está registrado")
+        if session.query(Persona).filter_by(email=datos["email"]).first():
+            raise HTTPException(status_code=400, detail="El email ya está registrado")
+        if session.query(Persona).filter_by(telefono=datos["telefono"]).first():
+            raise HTTPException(status_code=400, detail="El teléfono ya está registrado")
+
+        try:
+            datos["telefono"] = int(datos["telefono"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="El teléfono debe ser un número")
+        
+        try:
+            fecha_nac = datetime.strptime(datos["fecha_de_nacimiento"], "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, use YYYY-MM-DD")
+
+        nueva_persona = Persona(
+            dni=datos["dni"],
+            nombre=datos["nombre"],
+            email=datos["email"],
+            telefono=datos["telefono"],
+            fecha_de_nacimiento=fecha_nac,
+            habilitado=datos.get("habilitado", "si")
+        )
+
+        session.add(nueva_persona)
+        session.commit()
+        session.refresh(nueva_persona)
+
+        return {
+            "id": nueva_persona.id,
+            "dni": nueva_persona.dni,
+            "nombre": nueva_persona.nombre,
+            "email": nueva_persona.email,
+            "telefono": nueva_persona.telefono,
+            "fecha_de_nacimiento": nueva_persona.fecha_de_nacimiento.isoformat(),
+            "edad": calcular_edad(nueva_persona.fecha_de_nacimiento),
+            "habilitado": nueva_persona.habilitado
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al crear la persona: {str(e)}")
+    finally:
+        session.close()
+"""
 
 #Hecho por Nahuel Garcia
 @app.put("/personas/{persona_id}")
@@ -182,7 +294,71 @@ async def modificar_persona(persona_id: int, request: Request):
     }
     session.close()
     return resultado
+"""
+@app.put("/personas/{persona_id}")
+async def modificar_persona(persona_id: int, request: Request):
+    session = Session()
+    try:
+        persona = session.query(Persona).get(persona_id)
+        if not persona:
+            raise HTTPException(status_code=404, detail="Persona no encontrada")
 
+        datos = await request.json()
+
+        # Validaciones
+        if "telefono" in datos:
+            try:
+                datos["telefono"] = int(datos["telefono"])
+            except ValueError:
+                raise HTTPException(status_code=400, detail="El teléfono debe ser un número")
+
+        if "dni" in datos and datos["dni"] != persona.dni:
+            if session.query(Persona).filter_by(dni=datos["dni"]).first():
+                raise HTTPException(status_code=400, detail="El DNI ya está registrado")
+            persona.dni = datos["dni"]
+
+        if "email" in datos and datos["email"] != persona.email:
+            if session.query(Persona).filter_by(email=datos["email"]).first():
+                raise HTTPException(status_code=400, detail="El email ya está registrado")
+            persona.email = datos["email"]
+
+        if "telefono" in datos and datos["telefono"] != persona.telefono:
+            if session.query(Persona).filter_by(telefono=datos["telefono"]).first():
+                raise HTTPException(status_code=400, detail="El teléfono ya está registrado")
+            persona.telefono = datos["telefono"]
+
+        if "fecha_de_nacimiento" in datos:
+            try:
+                datos["fecha_de_nacimiento"] = datetime.strptime(datos["fecha_de_nacimiento"], "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Formato de fecha inválido, use YYYY-MM-DD")
+
+        for campo, valor in datos.items():
+            setattr(persona, campo, valor)
+
+        session.commit()
+        session.refresh(persona)
+
+        return {
+            "id": persona.id,
+            "dni": persona.dni,
+            "nombre": persona.nombre,
+            "email": persona.email,
+            "telefono": persona.telefono,
+            "fecha_de_nacimiento": persona.fecha_de_nacimiento.isoformat(),
+            "edad": calcular_edad(persona.fecha_de_nacimiento),
+            "habilitado": persona.habilitado
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al modificar la persona: {str(e)}")
+    finally:
+        session.close()
+
+"""
 
 #Hecho por Nahuel Garcia
 @app.delete("/personas/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,6 +373,27 @@ def eliminar_persona(id: int):
     session.commit()
     session.close()
     return {"mensaje": "Persona eliminada"}
+"""
+@app.delete("/personas/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_persona(id: int):
+    session = Session()
+    try:
+        persona = session.query(Persona).get(id)
+        if persona is None:
+            raise HTTPException(status_code=404, detail="Persona no encontrada")
+        
+        session.delete(persona)
+        session.commit()
+        return {"mensaje": "Persona eliminada"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al eliminar la persona: {str(e)}")
+    finally:
+        session.close()
+
 
 #Hecho por Agustin Nicolas Mancini
 @app.get("/turnos/")
