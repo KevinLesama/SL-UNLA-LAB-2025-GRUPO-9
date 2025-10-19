@@ -399,173 +399,222 @@ def eliminar_persona(id: int):
 @app.get("/turnos/")
 def listar_turnos():
     session = Session()
-    turnos = session.query(Turnos).all()
-    resultado = [
-        {
-            "id": t.id,
-            "fecha": t.fecha,
-            "hora": t.hora,
-            "estado": t.estado,
-            "persona_id": t.persona_id
-        }
-        for t in turnos
-    ]
-    session.close()
-    return resultado
+    try:
+        turnos = session.query(Turnos).all()
+        resultado = [
+            {
+                "id": t.id,
+                "fecha": t.fecha,
+                "hora": t.hora,
+                "estado": t.estado,
+                "persona_id": t.persona_id
+            }
+            for t in turnos
+        ]
+        session.close()
+        return resultado
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de turnos: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Agustin Nicolas Mancini
 @app.get("/turnos/{id}")
 def obtener_turno(id: int):
     session = Session()
-    turno = session.query(Turnos).get(id)
-    if turno is None:
+    try:
+        turno = session.query(Turnos).get(id)
+        if turno is None:
+            session.close()
+            raise HTTPException(status_code=404, detail="Turno no encontrado")
+        resultado = {
+            "id": turno.id,
+            "fecha": turno.fecha,
+            "hora": turno.hora,
+            "estado": turno.estado,
+            "persona_id": turno.persona_id
+        }
         session.close()
-        raise HTTPException(status_code=404, detail="Turno no encontrado")
-    resultado = {
-        "id": turno.id,
-        "fecha": turno.fecha,
-        "hora": turno.hora,
-        "estado": turno.estado,
-        "persona_id": turno.persona_id
-    }
-    session.close()
-    return resultado
+        return resultado
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener el turno: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Agustin Nicolas Mancini
 @app.post("/turnos/", status_code=status.HTTP_201_CREATED)
 async def crear_turno(request: Request):
     session = Session()
-    datos = await request.json()
-    fecha = datos.get("fecha")
-    hora = datos.get("hora")
-    persona = session.query(Persona).get(datos.get("persona_id"))
-    if persona is None:
-        session.close()
-        raise HTTPException(status_code=400, detail="Persona no encontrada")
+    try:
+        datos = await request.json()
+        fecha = datos.get("fecha")
+        hora = datos.get("hora")
+        persona = session.query(Persona).get(datos.get("persona_id"))
+        if persona is None:
+            session.close()
+            raise HTTPException(status_code=400, detail="Persona no encontrada")
 
-    if not fecha or not hora:
-        session.close()
-        raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
+        if not fecha or not hora:
+            session.close()
+            raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
 
-    if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora"))and not turnoDisponibleEstado(session, datos.get("fecha"), datos.get("hora")):
-        session.close()
-        raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
-    
-    if hora not in HORARIOS_VALIDOS:
-        session.close()
-        raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
-
+        if not turnoDisponible(session, datos.get("fecha"), hora = datos.get("hora"))and not turnoDisponibleEstado(session, datos.get("fecha"), datos.get("hora")):
+            session.close()
+            raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
         
-    
-    seis_meses_atras = date.today() - timedelta(days=180)
-    turnos_cancelados = (
-        session.query(Turnos).filter(
-            Turnos.persona_id == persona.id,
-            Turnos.estado == "cancelado",
-            Turnos.fecha >= seis_meses_atras
-        ).count()
-    )
-    if turnos_cancelados >= 5 :
-        persona.habilitado = "no"
-        session.commit()
-        session.close()
-        raise HTTPException(
-            status_code=400,
-            detail="La persona tiene 5 o más turnos cancelados en los últimos 6 meses"
+        if hora not in HORARIOS_VALIDOS:
+            session.close()
+            raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
+
+            
+        
+        seis_meses_atras = date.today() - timedelta(days=180)
+        turnos_cancelados = (
+            session.query(Turnos).filter(
+                Turnos.persona_id == persona.id,
+                Turnos.estado == "cancelado",
+                Turnos.fecha >= seis_meses_atras
+            ).count()
         )
-    else:
-        persona.habilitado = "si"
+        if turnos_cancelados >= 5 :
+            persona.habilitado = "no"
+            session.commit()
+            session.close()
+            raise HTTPException(
+                status_code=400,
+                detail="La persona tiene 5 o más turnos cancelados en los últimos 6 meses"
+            )
+        else:
+            persona.habilitado = "si"
+            session.commit()
+
+        nuevo_turno = Turnos(
+            fecha=datos.get("fecha"),
+            hora=datos.get("hora"),
+            estado=datos.get("estado", "pendiente"),
+            persona_id=datos.get("persona_id")
+        )
+        session.add(nuevo_turno)
         session.commit()
+        session.refresh(nuevo_turno)
 
-    nuevo_turno = Turnos(
-        fecha=datos.get("fecha"),
-        hora=datos.get("hora"),
-        estado=datos.get("estado", "pendiente"),
-        persona_id=datos.get("persona_id")
-    )
-    session.add(nuevo_turno)
-    session.commit()
-    session.refresh(nuevo_turno)
-
-    resultado = {
-        "id": nuevo_turno.id,
-        "fecha": nuevo_turno.fecha,
-        "hora": nuevo_turno.hora,
-        "estado": nuevo_turno.estado,
-        "persona_id": nuevo_turno.persona_id
-    }
-    session.close()
-    return resultado
+        resultado = {
+            "id": nuevo_turno.id,
+            "fecha": nuevo_turno.fecha,
+            "hora": nuevo_turno.hora,
+            "estado": nuevo_turno.estado,
+            "persona_id": nuevo_turno.persona_id
+        }
+        session.close()
+        return resultado
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al crear el turno: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Orion Jaime
 @app.put("/turnos/{id}")
 async def modificar_turno(id: int, request: Request):
     session = Session()
-    datos = await request.json()
-    turno = session.query(Turnos).get(id)
-    fecha = datos.get("fecha")
-    hora = datos.get("hora")
-    if turno is None:
-        session.close()
-        raise HTTPException(status_code=404, detail="Turno no encontrado")
-
-    turno.fecha = datos.get("fecha", turno.fecha)
-    turno.hora = datos.get("hora", turno.hora)
-    turno.estado = datos.get("estado", turno.estado)
-
-    if "persona_id" in datos:
-        persona = session.query(Persona).get(datos["persona_id"])
-        if persona is None:
+    try:
+        datos = await request.json()
+        turno = session.query(Turnos).get(id)
+        fecha = datos.get("fecha")
+        hora = datos.get("hora")
+        if turno is None:
             session.close()
-            raise HTTPException(status_code=400, detail="Persona no encontrada")
-        turno.persona_id = datos["persona_id"]
+            raise HTTPException(status_code=404, detail="Turno no encontrado")
+        
+        if turno.estado == "cancelado" or turno.estado == "asistido":
+                session.close()
+                raise HTTPException(status_code=400, detail="No se puede modificar un turno cancelado o asistido")
 
-    session.commit()
-    resultado = {
-        "id": turno.id,
-        "fecha": turno.fecha,
-        "hora": turno.hora,
-        "estado": turno.estado,
-        "persona_id": turno.persona_id
-    }
-    session.close()
-    return resultado
+        turno.fecha = datos.get("fecha", turno.fecha)
+        turno.hora = datos.get("hora", turno.hora)
+        turno.estado = datos.get("estado", turno.estado)
+
+        if "persona_id" in datos:
+            persona = session.query(Persona).get(datos["persona_id"])
+            if persona is None:
+                session.close()
+                raise HTTPException(status_code=400, detail="Persona no encontrada")
+            turno.persona_id = datos["persona_id"]
+
+        session.commit()
+        resultado = {
+            "id": turno.id,
+            "fecha": turno.fecha,
+            "hora": turno.hora,
+            "estado": turno.estado,
+            "persona_id": turno.persona_id
+        }
+        session.close()
+        return resultado
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al modificar el turno: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Orion Jaime
 @app.delete("/turnos/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_turno(id: int):
     session = Session()
-    turno = session.query(Turnos).get(id)
-    if turno is None:
+    try:
+        turno = session.query(Turnos).get(id)
+        if turno.estado == "asistido":
+                session.close()
+                raise HTTPException(status_code=400, detail="No se puede eliminar un turno asistido")
+        if turno is None:
+            session.close()
+            raise HTTPException(status_code=404, detail="Turno no encontrado")
+        session.delete(turno)
+        session.commit()
         session.close()
-        raise HTTPException(status_code=404, detail="Turno no encontrado")
-    session.delete(turno)
-    session.commit()
-    session.close()
-    return {"mensaje": "Turno eliminado"}
+        return {"mensaje": "Turno eliminado"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al eliminar el turno: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Kevin Lesama Soto
 @app.get("/turnos-disponibles")
 def turnos_disponibles(fecha: str):
     session = Session()
     try:
-        fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
-    except ValueError:
+        try:
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
+        except ValueError:
+            session.close()
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
+
+        turnos_ocupados = session.query(Turnos).filter(
+            Turnos.fecha == fecha_dt,
+            Turnos.estado != "cancelado"   
+        ).all()
+
+        horarios_ocupados = {t.hora for t in turnos_ocupados}
+
+        horarios_libres = [h for h in HORARIOS_VALIDOS if h not in horarios_ocupados]
+
         session.close()
-        raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
-
-    turnos_ocupados = session.query(Turnos).filter(
-        Turnos.fecha == fecha_dt,
-        Turnos.estado != "cancelado"   
-    ).all()
-
-    horarios_ocupados = {t.hora for t in turnos_ocupados}
-
-    horarios_libres = [h for h in HORARIOS_VALIDOS if h not in horarios_ocupados]
-
-    session.close()
-    return {"fecha": fecha, "horarios_disponibles": horarios_libres}
-
+        return {"fecha": fecha, "horarios_disponibles": horarios_libres}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener los turnos disponibles: {str(e)}")
+    finally:
+        session.close()
 
 @app.put("/turnos/{id}/cancelar")
 async def cancelar_turno(id: int, request: Request):
@@ -605,4 +654,47 @@ async def cancelar_turno(id: int, request: Request):
     except Exception as e:
         session.rollback()
         session.close()
-    raise HTTPException(status_code=500, detail="Ocurrió un error al modificar el turno")
+    raise HTTPException(status_code=500, detail="Ocurrió un error al cancelar el turno")
+
+@app.put("/turnos/{id}/confirmar")
+async def confirmar_turno(id: int, request: Request):
+    session = Session()
+    try:
+        
+        turno = session.query(Turnos).get(id)
+ 
+        if turno is None:
+            session.close()
+            raise HTTPException(status_code=404, detail="Turno no encontrado")
+
+        if turno.estado == "asistido":
+            session.close()
+            raise HTTPException(status_code=400, detail="No se puede confirmar un turno asistido")
+
+        if turno.estado == "cancelado" or turno.estado == "confirmado":
+            session.close()
+            raise HTTPException(status_code=400, detail="No se puede confirmar un turno cancelado o ya confirmado")
+        
+
+
+        turno.estado = "confirmado"
+
+        session.commit()
+        resultado = {
+            "id": turno.id,
+            "fecha": turno.fecha,
+            "hora": turno.hora,
+            "estado": turno.estado,
+            "persona_id": turno.persona_id
+        }
+        session.close()
+        return resultado
+
+    except HTTPException:
+        session.close()
+        raise
+    except Exception as e:
+        session.rollback()
+        session.close()
+    raise HTTPException(status_code=500, detail="Ocurrió un error al confirmar el turno")
+
