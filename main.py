@@ -616,6 +616,7 @@ def turnos_disponibles(fecha: str):
     finally:
         session.close()
 
+#Hecho por Nahuel Garcia
 @app.put("/turnos/{id}/cancelar")
 async def cancelar_turno(id: int, request: Request):
     session = Session()
@@ -656,6 +657,8 @@ async def cancelar_turno(id: int, request: Request):
         session.close()
     raise HTTPException(status_code=500, detail="Ocurrió un error al cancelar el turno")
 
+
+#Hecho por Kevin Lesama Soto
 @app.put("/turnos/{id}/confirmar")
 async def confirmar_turno(id: int, request: Request):
     session = Session()
@@ -675,8 +678,6 @@ async def confirmar_turno(id: int, request: Request):
             session.close()
             raise HTTPException(status_code=400, detail="No se puede confirmar un turno cancelado o ya confirmado")
         
-
-
         turno.estado = "confirmado"
 
         session.commit()
@@ -698,3 +699,37 @@ async def confirmar_turno(id: int, request: Request):
         session.close()
     raise HTTPException(status_code=500, detail="Ocurrió un error al confirmar el turno")
 
+#Hecho por Nahuel Garcia
+@app.get("/reportes/turnos-por-fecha")
+def reportes_turnos_por_fecha(fecha: str):
+    session = Session()
+    try:
+        try:
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, usar YYYY-MM-DD")
+
+
+        turnos = session.query(Turnos).filter(Turnos.fecha == fecha_dt).all()
+        lista_turnos = []
+
+
+        for t in turnos:
+            persona = session.query(Persona).get(t.persona_id)
+            lista_turnos.append({
+                "id": t.id,
+                "fecha": t.fecha,
+                "hora": t.hora,
+                "estado": t.estado,
+                "persona_id": t.persona_id,
+                "persona_nombre": persona.nombre if persona else None,
+                "persona_dni": persona.dni if persona else None
+            })
+           
+        if not lista_turnos:
+            return {"mensaje":"No hay turnos registrados para esta fecha"}
+
+        return {"fecha": fecha, "turnos": lista_turnos}
+
+    finally:
+        session.close()
