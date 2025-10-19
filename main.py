@@ -569,18 +569,19 @@ def turnos_disponibles(fecha: str):
 
 @app.put("/turnos/{id}/cancelar")
 async def cancelar_turno(id: int, request: Request):
+    session = Session()
     try:
-        session = Session()
+        
         turno = session.query(Turnos).get(id)
  
         if turno is None:
             session.close()
             raise HTTPException(status_code=404, detail="Turno no encontrado")
-        
+
         if turno.estado == "asistido":
             session.close()
             raise HTTPException(status_code=400, detail="No se puede cancelar un turno asistido")
-        
+
         if turno.estado == "cancelado":
             session.close()
             raise HTTPException(status_code=400, detail="El turno ya esta Cancelado")
@@ -597,11 +598,11 @@ async def cancelar_turno(id: int, request: Request):
         }
         session.close()
         return resultado
-    
+
     except HTTPException:
         session.close()
         raise
     except Exception as e:
         session.rollback()
         session.close()
-        raise HTTPException(status_code=500, detail="Ocurrió un error al modificar el turno")
+    raise HTTPException(status_code=500, detail="Ocurrió un error al modificar el turno")
