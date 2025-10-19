@@ -2,7 +2,8 @@ from fastapi import FastAPI, HTTPException, Request, status
 from models import Persona, Turnos, Base
 from database import Session, engine
 from datetime import datetime, date, timedelta
-from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, HORARIOS_VALIDOS
+from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, HORARIOS_VALIDOS, MESES_ESPANOL
+
 
 app = FastAPI()
 Base.metadata.create_all(engine)
@@ -733,3 +734,73 @@ def reportes_turnos_por_fecha(fecha: str):
 
     finally:
         session.close()
+
+
+#Hecho por Orion Quimey Jaime Adell
+@app.get("/reportes/turnos-cancelados-por-mes")
+def reportes_turnos_cancelados_por_mes():
+    session = Session()
+    
+    hoy = date.today()
+    year_month_prefix = hoy.strftime("%Y-%m")
+    mes_nombre_es = MESES_ESPANOL[hoy.month - 1]
+
+    turnos_cancelados = (
+        session.query(Turnos)
+        .filter(Turnos.estado == "cancelado")
+        .filter(Turnos.fecha.like(f"{year_month_prefix}%"))
+        .all()
+    )
+
+    turnos_data = [
+        {
+            "id": t.id,
+            "persona_id": t.persona_id,
+            "fecha": t.fecha,
+            "hora": t.hora,
+            "estado": t.estado
+        }
+        for t in turnos_cancelados
+    ]
+
+    session.close()
+    
+    return {
+        "anio": hoy.year,
+        "mes": mes_nombre_es,
+        "cantidad": len(turnos_cancelados),
+        "turnos": turnos_data
+    }
+
+#Hecho por Orion Quimey Jaime Adell
+@app.get("/reportes/turnos-por-persona")
+def reportes_turnos_por_persona(dni: int):
+    session = Session()
+    
+
+    persona = session.query(Persona).filter_by(dni=dni).first()
+    
+    if persona is None:
+        session.close()
+        raise HTTPException(status_code=404, detail=f"Persona con DNI {dni} no encontrada.")
+
+    
+    turnos = session.query(Turnos).filter_by(persona_id=persona.id).all()
+
+    resultado_turnos = [
+        {
+            "id": t.id,
+            "fecha": t.fecha,
+            "hora": t.hora,
+            "estado": t.estado,
+        }
+        for t in turnos
+    ]
+
+    session.close()
+    
+    return {
+        "dni": persona.dni,
+        "nombre": persona.nombre,
+        "turnos": resultado_turnos
+    }
