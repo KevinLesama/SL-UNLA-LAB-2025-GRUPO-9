@@ -568,7 +568,7 @@ def turnos_disponibles(fecha: str):
 
 
 @app.put("/turnos/{id}/cancelar")
-async def modificar_turno(id: int, request: Request):
+async def cancelar_turno(id: int, request: Request):
     try:
         session = Session()
         turno = session.query(Turnos).get(id)
