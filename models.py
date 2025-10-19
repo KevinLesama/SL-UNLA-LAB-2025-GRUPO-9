@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date 
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship
 from base import Base
 
@@ -11,7 +11,7 @@ class Persona(Base):
     email = Column(String)
     telefono = Column(Integer)
     fecha_de_nacimiento = Column(Date)
-    habilitado = Column(String, default="si")
+    habilitado = Column(Boolean, default=True)
     turnos = relationship("Turnos", back_populates="persona")
 
 #Hecho por Kevin Lesama Soto
