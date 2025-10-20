@@ -13,6 +13,18 @@ database.py
 models.py
 requierements.txt
 
+PARA CREAR VENV:
+python -m venv venv
+
+PARA ACTIVAR VENV:
+cd .\venv\Scripts\activate
+en caso de que salte un error a la hora de activar venv, leer linea 33 hasta 46
+
+INSTALAR DEPENDENCIAS:
+pip install -r requirements.txt
+
+INICIAR APP:
+uvicorn main:app --reload
 
 comandos utiles de git:
 git init = Sirve para iniciar un git. No lo usen ya esta hecho.
@@ -35,9 +47,7 @@ le dan a si a todo y listo.
 
 Para activar el entorno deben ir a la carpeta de .venv PERO DESDE LA CONSOLA.
 escriban en la consola "cd .\.venv\Scripts" le dan enter y despues ponen ".\activate"
-RECUERDEN QUE TIENEN QUE SALIR DESPUES NO SE OLVIDEN O LOS MATO.
 Para volver a la carpeta raiz del proyecto hacen asi "cd ..\..\"
-no rompan nada porfavor 🙏🏻🙏🏻
 
 consignas: 
 1. Crear entorno virtual con venv e instalar dependencias.
