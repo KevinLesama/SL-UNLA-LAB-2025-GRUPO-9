@@ -651,3 +651,96 @@ def reporte_estado_personas(habilitada: bool):
     finally:
         # Se asegura de cerrar la sesión siempre
         session.close()
+
+#Hecho por Agustin Nicolas Mancini
+@app.get("/reportes/turnos-cancelados?min=5")
+def reportes_turnos_cancelados(min: int = 5):
+    session = Session()
+    try:
+        personas = session.query(Persona).all()
+        resultado = []
+
+        for persona in personas:
+            turnos_cancelados = session.query(Turnos).filter(
+                Turnos.persona_id == persona.id,
+                Turnos.estado == "cancelado"
+            ).all()
+
+            cantidad = len(turnos_cancelados)
+            if cantidad >= min:
+                resultado.append({
+                    "persona_id": persona.id,
+                    "dni": persona.dni,
+                    "nombre": persona.nombre,
+                    "cantidad_cancelados": cantidad,
+                    "turnos_cancelados": [
+                        {
+                            "id": t.id,
+                            "fecha": t.fecha,
+                            "hora": t.hora,
+                            "estado": t.estado
+                        }
+                        for t in turnos_cancelados
+                    ]
+                })
+
+        if not resultado:
+            return {"mensaje": f"No hay personas con {min} o más turnos cancelados"}
+
+        return {"minimo": min, "personas": resultado}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al generar el reporte: {str(e)}")
+    finally:
+        session.close()
+
+#Hecho por Agustin Nicolas Mancini
+@app.get("/reportes/turnos-confirmados?desde=YYYY-MM-DD&hasta=YYYY-MM-DD")
+def reportes_turnos_confirmados(desde: str, hasta: str):
+    session = Session()
+    try:
+        # Validar formato de fechas
+        try:
+            fecha_desde = datetime.strptime(desde, "%Y-%m-%d").date()
+            fecha_hasta = datetime.strptime(hasta, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha inválido, usar YYYY-MM-DD")
+
+        if fecha_desde > fecha_hasta:
+            raise HTTPException(status_code=400, detail="La fecha 'desde' no puede ser posterior a 'hasta'")
+
+        turnos = session.query(Turnos).filter(
+            Turnos.estado == "confirmado",
+            Turnos.fecha >= fecha_desde,
+            Turnos.fecha <= fecha_hasta
+        ).all()
+
+        if not turnos:
+            return {"mensaje": "No hay turnos confirmados en el rango de fechas especificado"}
+
+        resultado = []
+        for t in turnos:
+            persona = session.query(Persona).get(t.persona_id)
+            resultado.append({
+                "id": t.id,
+                "fecha": t.fecha,
+                "hora": t.hora,
+                "estado": t.estado,
+                "persona_id": t.persona_id,
+                "persona_nombre": persona.nombre if persona else None,
+                "persona_dni": persona.dni if persona else None
+            })
+
+        return {
+            "desde": fecha_desde.isoformat(),
+            "hasta": fecha_hasta.isoformat(),
+            "cantidad": len(turnos),
+            "turnos": resultado
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al generar el reporte: {str(e)}")
+    finally:
+        session.close()
