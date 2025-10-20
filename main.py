@@ -653,8 +653,8 @@ def reporte_estado_personas(habilitada: bool):
         session.close()
 
 #Hecho por Agustin Nicolas Mancini
-@app.get("/reportes/turnos-cancelados?min=5")
-def reportes_turnos_cancelados(min: int = 5):
+@app.get("/reportes/turnos-cancelados")
+def reportes_turnos_cancelados(min: int):
     session = Session()
     try:
         personas = session.query(Persona).all()
@@ -685,7 +685,7 @@ def reportes_turnos_cancelados(min: int = 5):
                 })
 
         if not resultado:
-            return {"mensaje": f"No hay personas con {min} o más turnos cancelados"}
+            return {"mensaje": "No hay personas con {min} o más turnos cancelados"}
 
         return {"minimo": min, "personas": resultado}
 
@@ -695,7 +695,7 @@ def reportes_turnos_cancelados(min: int = 5):
         session.close()
 
 #Hecho por Agustin Nicolas Mancini
-@app.get("/reportes/turnos-confirmados?desde=YYYY-MM-DD&hasta=YYYY-MM-DD")
+@app.get("/reportes/turnos-confirmados")
 def reportes_turnos_confirmados(desde: str, hasta: str):
     session = Session()
     try:
