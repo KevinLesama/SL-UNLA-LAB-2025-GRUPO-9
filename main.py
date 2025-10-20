@@ -551,70 +551,80 @@ def reportes_turnos_por_fecha(fecha: str):
 @app.get("/reportes/turnos-cancelados-por-mes")
 def reportes_turnos_cancelados_por_mes():
     session = Session()
-    
-    hoy = date.today()
-    year_month_prefix = hoy.strftime("%Y-%m")
-    mes_nombre_es = MESES_ESPANOL[hoy.month - 1]
+    try:
+        hoy = date.today()
+        year_month_prefix = hoy.strftime("%Y-%m")
+        mes_nombre_es = MESES_ESPANOL[hoy.month - 1]
 
-    turnos_cancelados = (
-        session.query(Turnos)
-        .filter(Turnos.estado == "cancelado")
-        .filter(Turnos.fecha.like(f"{year_month_prefix}%"))
-        .all()
-    )
+        turnos_cancelados = (
+            session.query(Turnos)
+            .filter(Turnos.estado == "cancelado")
+            .filter(Turnos.fecha.like(f"{year_month_prefix}%"))
+            .all()
+        )
 
-    turnos_data = [
-        {
-            "id": t.id,
-            "persona_id": t.persona_id,
-            "fecha": t.fecha,
-            "hora": t.hora,
-            "estado": t.estado
+        turnos_data = [
+            {
+                "id": t.id,
+                "persona_id": t.persona_id,
+                "fecha": t.fecha,
+                "hora": t.hora,
+                "estado": t.estado
+            }
+            for t in turnos_cancelados
+        ]
+
+        return {
+            "anio": hoy.year,
+            "mes": mes_nombre_es,
+            "cantidad": len(turnos_cancelados),
+            "turnos": turnos_data
         }
-        for t in turnos_cancelados
-    ]
-
-    session.close()
-    
-    return {
-        "anio": hoy.year,
-        "mes": mes_nombre_es,
-        "cantidad": len(turnos_cancelados),
-        "turnos": turnos_data
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al generar el reporte de cancelados: {str(e)}")
+    finally:
+        session.close()
 
 #Hecho por Orion Quimey Jaime Adell
 @app.get("/reportes/turnos-por-persona")
 def reportes_turnos_por_persona(dni: int):
     session = Session()
-    
+    try:
+        persona = session.query(Persona).filter_by(dni=dni).first()
+        
+        if persona is None:
+           
+            raise HTTPException(status_code=404, detail=f"Persona con DNI {dni} no encontrada.")
 
-    persona = session.query(Persona).filter_by(dni=dni).first()
-    
-    if persona is None:
-        session.close()
-        raise HTTPException(status_code=404, detail=f"Persona con DNI {dni} no encontrada.")
 
-    
-    turnos = session.query(Turnos).filter_by(persona_id=persona.id).all()
+        turnos = session.query(Turnos).filter_by(persona_id=persona.id).all()
 
-    resultado_turnos = [
-        {
-            "id": t.id,
-            "fecha": t.fecha,
-            "hora": t.hora,
-            "estado": t.estado,
+        resultado_turnos = [
+            {
+                "id": t.id,
+                "fecha": t.fecha,
+                "hora": t.hora,
+                "estado": t.estado,
+            }
+            for t in turnos
+        ]
+        
+
+        return {
+            "dni": persona.dni,
+            "nombre": persona.nombre,
+            "turnos": resultado_turnos
         }
-        for t in turnos
-    ]
-    session.close()
-    
-    return {
-        "dni": persona.dni,
-        "nombre": persona.nombre,
-        "turnos": resultado_turnos
-    }
-
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener los turnos por persona: {str(e)}")
+    finally:
+        session.close()
+        
+        
 #Hecho por Kevin Lesama Soto
 @app.get("/reportes/estado-personas")
 def reporte_estado_personas(habilitada: bool):
