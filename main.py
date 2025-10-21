@@ -620,13 +620,11 @@ def reportes_turnos_por_persona(dni: int):
 def reporte_estado_personas(habilitada: bool):
     session = Session()
     try:
-        # Filtra directamente usando el booleano que FastAPI parsea del query param
         personas = session.query(Persona).filter(Persona.habilitado == habilitada).all()
         
         resultado = []
         for p in personas:
             try:
-                # Calcula la edad solo si la fecha de nacimiento existe
                 edad = calcular_edad(p.fecha_de_nacimiento) if p.fecha_de_nacimiento else None
             except Exception:
                 edad = None
@@ -643,13 +641,10 @@ def reporte_estado_personas(habilitada: bool):
             })
         return resultado
     except HTTPException:
-        # Si ocurre un error de validación o no encontrado, lo relanza
         raise
     except Exception as e:
-        # Para cualquier otro error, devuelve un 500
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener el reporte: {str(e)}")
     finally:
-        # Se asegura de cerrar la sesión siempre
         session.close()
 
 #Hecho por Agustin Nicolas Mancini
@@ -699,7 +694,6 @@ def reportes_turnos_cancelados(min: int):
 def reportes_turnos_confirmados(desde: str, hasta: str):
     session = Session()
     try:
-        # Validar formato de fechas
         try:
             fecha_desde = datetime.strptime(desde, "%Y-%m-%d").date()
             fecha_hasta = datetime.strptime(hasta, "%Y-%m-%d").date()
