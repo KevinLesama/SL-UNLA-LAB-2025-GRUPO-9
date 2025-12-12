@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship
 from base import Base
+from config import settings
 
 #Hecho por Nahuel Garcia
 class Persona(Base):
@@ -18,8 +19,8 @@ class Persona(Base):
 class Turnos(Base):
     __tablename__ = "turnos"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    fecha = Column(String)
+    fecha = Column(Date, nullable=False)
     hora = Column(String)
-    estado = Column(String, default="pendiente")
+    estado = Column(String, default=settings.ESTADO_PENDIENTE)
     persona_id = Column(Integer, ForeignKey('personas.id'))
     persona = relationship("Persona", back_populates="turnos")
