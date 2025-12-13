@@ -8,23 +8,12 @@ from config import settings
 from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, MESES_ESPANOL
 from fastapi.responses import StreamingResponse
 
-
-
-
-# Módulos estándar y de FastAPI
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import StreamingResponse
-from io import BytesIO
-# ... datetime, Session, etc.
-
-# Librerías de Reporte (Obligatorias en el stack)
-import pandas as pd
 import borb as borb
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
-# Dependencia que gestiona la sesión por request
+
 def get_db():
     db = SessionLocal()
     try:
@@ -267,7 +256,7 @@ async def crear_turno(request: Request, db: Session = Depends(get_db)):
         if not fecha_str or not hora:
             raise HTTPException(status_code=400, detail="La fecha y la hora son obligatorias")
 
-        # --- INICIO DE LA CORRECCIÓN ---
+        
         try:
             fecha_obj = datetime.strptime(fecha_str, "%Y-%m-%d").date()
         except ValueError:
@@ -275,7 +264,7 @@ async def crear_turno(request: Request, db: Session = Depends(get_db)):
 
         if not turnoDisponible(db, fecha_obj, hora=hora) and not turnoDisponibleEstado(db, fecha_obj, hora):
             raise HTTPException(status_code=400, detail="Esa hora no se encuentra disponible. Seleccione otra hora.")
-        # --- FIN DE LA CORRECCIÓN ---
+        
         
         if hora not in settings.HORARIOS_VALIDOS:
             raise HTTPException(status_code=400, detail="La hora debe estar entre 09:00 y 16:00 en intervalos de 30 minutos")
@@ -299,9 +288,9 @@ async def crear_turno(request: Request, db: Session = Depends(get_db)):
             persona.habilitado = True
             db.commit()
 
-        # --- CORRECCIÓN CLAVE ---
+        
         nuevo_turno = Turnos(
-            fecha=fecha_obj, # Usar el objeto fecha, no el string
+            fecha=fecha_obj, 
             hora=datos.get("hora"),
             estado=datos.get("estado", settings.ESTADO_PENDIENTE),
             persona_id=datos.get("persona_id")
@@ -312,7 +301,7 @@ async def crear_turno(request: Request, db: Session = Depends(get_db)):
 
         resultado = {
             "id": nuevo_turno.id,
-            "fecha": nuevo_turno.fecha.isoformat(), # Usar .isoformat() para la respuesta
+            "fecha": nuevo_turno.fecha.isoformat(), 
             "hora": nuevo_turno.hora,
             "estado": nuevo_turno.estado,
             "persona_id": nuevo_turno.persona_id
@@ -476,13 +465,13 @@ def reportes_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
         except ValueError:
             raise HTTPException(status_code=400, detail="Formato de fecha inválido, usar YYYY-MM-DD")
 
-        # Consulta optimizada con JOIN para obtener turnos y personas
+        
         turnos_con_persona = db.query(Turnos, Persona).join(Persona, Turnos.persona_id == Persona.id).filter(Turnos.fecha == fecha_dt).order_by(Persona.nombre, Turnos.hora).all()
         
         if not turnos_con_persona:
             return {"mensaje": "No hay turnos registrados para esta fecha"}
 
-        # Diccionario para agrupar los turnos por persona
+        
         personas_agrupadas = {}
         for turno, persona in turnos_con_persona:
             if persona.dni not in personas_agrupadas:
@@ -498,7 +487,7 @@ def reportes_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
                 "estado": turno.estado
             })
 
-        # Convertir el diccionario a una lista para la respuesta final
+        
         lista_personas = list(personas_agrupadas.values())
 
         return {"fecha": fecha, "personas": lista_personas}
@@ -578,13 +567,13 @@ def reportes_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
         except ValueError:
             raise HTTPException(status_code=400, detail="Formato de fecha inválido, usar YYYY-MM-DD")
 
-        # Consulta optimizada con JOIN para obtener turnos y personas
+        
         turnos_con_persona = db.query(Turnos, Persona).join(Persona, Turnos.persona_id == Persona.id).filter(Turnos.fecha == fecha_dt).order_by(Persona.nombre, Turnos.hora).all()
         
         if not turnos_con_persona:
             return {"mensaje": "No hay turnos registrados para esta fecha"}
 
-        # Diccionario para agrupar los turnos por persona
+        
         personas_agrupadas = {}
         for turno, persona in turnos_con_persona:
             if persona.dni not in personas_agrupadas:
@@ -600,7 +589,7 @@ def reportes_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
                 "estado": turno.estado
             })
 
-        # Convertir el diccionario a una lista para la respuesta final
+        
         lista_personas = list(personas_agrupadas.values())
 
         return {"fecha": fecha, "personas": lista_personas}
@@ -673,7 +662,7 @@ def reporte_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
 @app.get("/reportes/turnos-cancelados")
 def reportes_turnos_cancelados(min: int, db: Session = Depends(get_db)):
     try:
-        # Consulta optimizada que agrupa y cuenta en la base de datos
+        
         personas_con_cancelados = (
             db.query(
                 Persona,
@@ -691,7 +680,7 @@ def reportes_turnos_cancelados(min: int, db: Session = Depends(get_db)):
 
         resultado = []
         for persona, cantidad in personas_con_cancelados:
-            # Obtener el detalle de los turnos cancelados para esta persona
+            
             turnos_detalle = db.query(Turnos).filter(
                 Turnos.persona_id == persona.id,
                 Turnos.estado == settings.ESTADO_CANCELADO
@@ -782,7 +771,7 @@ def reporte_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
 @app.get("/reportes/turnos-cancelados")
 def reportes_turnos_cancelados(min: int, db: Session = Depends(get_db)):
     try:
-        # Consulta optimizada que agrupa y cuenta en la base de datos
+        
         personas_con_cancelados = (
             db.query(
                 Persona,
@@ -800,7 +789,7 @@ def reportes_turnos_cancelados(min: int, db: Session = Depends(get_db)):
 
         resultado = []
         for persona, cantidad in personas_con_cancelados:
-            # Obtener el detalle de los turnos cancelados para esta persona
+            
             turnos_detalle = db.query(Turnos).filter(
                 Turnos.persona_id == persona.id,
                 Turnos.estado == settings.ESTADO_CANCELADO
@@ -832,7 +821,7 @@ def reportes_turnos_cancelados(min: int, db: Session = Depends(get_db)):
 def reportes_turnos_cancelados_por_mes(db: Session = Depends(get_db)):
     try:
         hoy = date.today()
-        # Obtener el primer y último día del mes actual
+        
         primer_dia_mes = hoy.replace(day=1)
         if hoy.month == 12:
             ultimo_dia_mes = hoy.replace(year=hoy.year + 1, month=1, day=1) - timedelta(days=1)
@@ -901,7 +890,7 @@ def reportes_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(ge
         if fecha_desde > fecha_hasta:
             raise HTTPException(status_code=400, detail="La fecha 'desde' no puede ser posterior a 'hasta'")
 
-        # Consulta optimizada con JOIN para obtener turnos y personas
+        
         turnos_con_persona = db.query(Turnos, Persona).join(Persona, Turnos.persona_id == Persona.id).filter(
             Turnos.estado == settings.ESTADO_CONFIRMADO,
             Turnos.fecha >= fecha_desde,
@@ -911,7 +900,7 @@ def reportes_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(ge
         if not turnos_con_persona:
             return {"mensaje": "No hay turnos confirmados en el rango de fechas especificado"}
 
-        # Diccionario para agrupar los turnos por persona
+        
         personas_agrupadas = {}
         for turno, persona in turnos_con_persona:
             if persona.dni not in personas_agrupadas:
@@ -923,12 +912,12 @@ def reportes_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(ge
             
             personas_agrupadas[persona.dni]["turnos"].append({
                 "id": turno.id,
-                "fecha": turno.fecha.isoformat(), # <-- CORRECCIÓN CLAVE
+                "fecha": turno.fecha.isoformat(), 
                 "hora": turno.hora,
                 "estado": turno.estado
             })
 
-        # Convertir el diccionario a una lista para la respuesta final
+        
         lista_personas = list(personas_agrupadas.values())
 
         return {
@@ -1080,3 +1069,72 @@ def pdf_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
     return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=personas_{estado_str}.pdf"})
 
 
+#Hecho por Nahuel Garcia
+@app.get("/reportes/pdf/turnos-cancelados")
+def pdf_turnos_cancelados(min: int, db: Session = Depends(get_db)):
+    data = reportes_turnos_cancelados(min, db)
+    
+    if "mensaje" in data:
+         raise HTTPException(status_code=404, detail=data["mensaje"])
+         
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos_cancelados"]:
+            filas.append({
+                "DNI": p["dni"],
+                "Nombre": p["nombre"],
+                "Cant. Total": p["cantidad_cancelados"],
+                "Fecha Turno": t["fecha"],
+                "Estado": t["estado"]
+            })
+            
+    df = pd.DataFrame(filas)
+    pdf = generar_pdf_borb(df, f"Personas con +{min} cancelaciones")
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=cancelados_min_{min}.pdf"})
+
+
+#Hecho por Nahuel Garcia
+@app.get("/reportes/pdf/turnos-cancelados-por-mes")
+def pdf_turnos_cancelados_por_mes(db: Session = Depends(get_db)):
+    data = reportes_turnos_cancelados_por_mes(db)
+    
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+        
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos_cancelados"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Fecha": t["fecha"],
+                "Hora": t["hora"]
+            })
+            
+    df = pd.DataFrame(filas)
+    titulo = f"Cancelados: {data['mes']} {data['anio']}"
+    pdf = generar_pdf_borb(df, titulo)
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": "inline; filename=cancelados_mes.pdf"})
+
+
+#Hecho por Nahuel Garcia
+@app.get("/reportes/pdf/turnos-confirmados")
+def pdf_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(get_db)):
+    data = reportes_turnos_confirmados(desde, hasta, db)
+    
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+        
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Fecha": t["fecha"],
+                "Hora": t["hora"]
+            })
+            
+    df = pd.DataFrame(filas)
+    pdf = generar_pdf_borb(df, f"Confirmados: {desde} al {hasta}")
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": "inline; filename=confirmados.pdf"})
