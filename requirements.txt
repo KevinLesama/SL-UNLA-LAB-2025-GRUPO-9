@@ -3,3 +3,5 @@ uvicorn==0.32.0
 SQLAlchemy==2.0.35
 pydantic==2.9.2
 pydantic-settings==2.3.4
+borb==2.0.14
+pandas

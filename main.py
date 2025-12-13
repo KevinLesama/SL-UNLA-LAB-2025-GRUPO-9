@@ -6,6 +6,20 @@ from database import SessionLocal, engine
 from datetime import datetime, date, timedelta
 from config import settings
 from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, MESES_ESPANOL
+from fastapi.responses import StreamingResponse
+
+
+
+
+# Módulos estándar y de FastAPI
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from io import BytesIO
+# ... datetime, Session, etc.
+
+# Librerías de Reporte (Obligatorias en el stack)
+import pandas as pd
+import borb as borb
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -927,3 +941,142 @@ def reportes_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(ge
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al generar el reporte: {str(e)}")
+
+
+
+import pandas as pd
+from io import BytesIO
+from fastapi.responses import StreamingResponse
+
+
+from borb.pdf.document import Document
+from borb.pdf.page.page import Page
+from borb.pdf.pdf import PDF
+from borb.pdf.canvas.layout.table.table import Table
+from borb.pdf.canvas.layout.text.paragraph import Paragraph
+from borb.pdf.canvas.layout.table.flexible_column_width_table import FlexibleColumnWidthTable
+
+from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
+
+def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
+    datos_df = datos_df.astype(str)
+    
+    try:
+        pdf = Document()
+        page = Page()
+        pdf.append_page(page)
+        
+        layout = SingleColumnLayout(page)
+        
+
+        layout.add(Paragraph(titulo, font_size=16))
+        layout.add(Paragraph("\n"))
+        
+
+        num_cols = len(datos_df.columns)
+        num_rows = len(datos_df) + 1
+        
+        if num_cols == 0:
+            layout.add(Paragraph("No hay datos para mostrar."))
+            buffer = BytesIO()
+            PDF.dumps(buffer, pdf)
+            buffer.seek(0)
+            return buffer
+
+
+        anchos = [1] * num_cols 
+        table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=num_rows)
+        
+
+        for col in datos_df.columns:
+            table.add(Paragraph(str(col), font_size=10, padding_bottom=5))
+            
+        # Filas
+        for _, row in datos_df.iterrows():
+            for item in row:
+                table.add(Paragraph(item, font_size=8))
+                
+        layout.add(table)
+        
+        buffer = BytesIO()
+        PDF.dumps(buffer, pdf)
+        buffer.seek(0)
+        return buffer
+
+    except Exception as e:
+        print(f"Error PDF: {e}")
+        buffer = BytesIO()
+        err_pdf = Document()
+        err_page = Page()
+        err_pdf.append_page(err_page)
+        err_layout = SingleColumnLayout(err_page)
+        err_layout.add(Paragraph(f"Error generando tabla: {str(e)}"))
+        PDF.dumps(buffer, err_pdf)
+        buffer.seek(0)
+        return buffer
+
+
+#hecho por kevin soto lesama
+@app.get("/reportes/pdf/turnos-por-fecha")
+def pdf_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
+    data = reportes_turnos_por_fecha(fecha, db)
+    
+    if isinstance(data, dict) and "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+        
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Hora": t["hora"],
+                "Estado": t["estado"]
+            })
+            
+    df = pd.DataFrame(filas)
+    pdf = generar_pdf_borb(df, f"Turnos del día {fecha}")
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=turnos_{fecha}.pdf"})
+
+
+#hecho por kevin soto lesama
+@app.get("/reportes/pdf/turnos-por-persona")
+def pdf_turnos_por_persona(dni: int, db: Session = Depends(get_db)):
+    data = reportes_turnos_por_persona(dni, db)
+    
+    filas = []
+    for t in data["turnos"]:
+        filas.append({
+            "Fecha": t["fecha"],
+            "Hora": t["hora"],
+            "Estado": t["estado"]
+        })
+        
+    if not filas:
+        raise HTTPException(status_code=404, detail="La persona no tiene turnos.")
+        
+    df = pd.DataFrame(filas)
+    pdf = generar_pdf_borb(df, f"Turnos de {data['nombre']} (DNI: {data['dni']})")
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=turnos_persona_{dni}.pdf"})
+
+
+#hecho por kevin soto lesama
+@app.get("/reportes/pdf/estado-personas")
+def pdf_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
+    lista_personas = reporte_estado_personas(habilitada, db)
+    
+    if not lista_personas:
+        estado = "habilitadas" if habilitada else "inhabilitadas"
+        raise HTTPException(status_code=404, detail=f"No hay personas {estado}")
+        
+    df = pd.DataFrame(lista_personas)
+    
+    cols_a_mostrar = ["dni", "nombre", "email", "telefono", "edad"]
+    cols_finales = [c for c in cols_a_mostrar if c in df.columns]
+    df = df[cols_finales]
+    
+    estado_str = "Habilitadas" if habilitada else "Inhabilitadas"
+    pdf = generar_pdf_borb(df, f"Personas {estado_str}")
+    return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"inline; filename=personas_{estado_str}.pdf"})
+
+
