@@ -18,6 +18,11 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 from borb.pdf.canvas.layout.table.flexible_column_width_table import FlexibleColumnWidthTable
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
 from io import StringIO
+from borb.pdf.canvas.color.color import HexColor
+from borb.pdf.canvas.layout.layout_element import Alignment
+from borb.pdf.canvas.layout.table.table import TableCell
+from decimal import Decimal
+from borb.pdf.canvas.layout.image.image import Image
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -30,40 +35,74 @@ def get_db():
         db.close()
 
 def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
+    
     datos_df = datos_df.astype(str)
     
     try:
         pdf = Document()
         page = Page()
         pdf.append_page(page)
+        layout = SingleColumnLayout(page, 
+                                    vertical_margin=Decimal(40), 
+                                    horizontal_margin=Decimal(40))
         
-        layout = SingleColumnLayout(page)
+        layout.add(Paragraph(
+            titulo, 
+            font="Helvetica-Bold", 
+            font_size=20, 
+            horizontal_alignment=Alignment.CENTERED,
+            padding_bottom=Decimal(5)
+        ))
         
-        layout.add(Paragraph(titulo, font_size=16))
-        layout.add(Paragraph("\n"))
-
+        fecha_emision = datetime.now().strftime("%d/%m/%Y %H:%M")
+        layout.add(Paragraph(
+            f"Emitido el: {fecha_emision}", 
+            font="Helvetica-Oblique", 
+            font_size=10, 
+            horizontal_alignment=Alignment.CENTERED,
+            padding_bottom=Decimal(20)
+        ))
+        
         num_cols = len(datos_df.columns)
-        num_rows = len(datos_df) + 1
-        
         if num_cols == 0:
-            layout.add(Paragraph("No hay datos para mostrar."))
+            layout.add(Paragraph("No hay datos para mostrar en este reporte."))
             buffer = BytesIO()
             PDF.dumps(buffer, pdf)
             buffer.seek(0)
             return buffer
-        
-        anchos = [1] * num_cols 
-        table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=num_rows)
 
+
+        table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=len(datos_df) + 1)
+        
         for col in datos_df.columns:
-            table.add(Paragraph(str(col), font_size=10, padding_bottom=5))
+            table.add(TableCell(
+                Paragraph(str(col), font="Helvetica-Bold", font_color=HexColor("FFFFFF"), font_size=10),
+                background_color=HexColor("585858"), # Gris Oscuro
+                padding_top=Decimal(5),
+                padding_bottom=Decimal(5),
+                padding_left=Decimal(5)
+            ))
             
-        # Filas
-        for _, row in datos_df.iterrows():
+        for i, row in datos_df.iterrows():
+            bg_color = HexColor("FFFFFF") if i % 2 == 0 else HexColor("F2F2F2")
+            
             for item in row:
-                table.add(Paragraph(item, font_size=8))
+                table.add(TableCell(
+                    Paragraph(item, font_size=9),
+                    background_color=bg_color,
+                    padding_top=Decimal(4),
+                    padding_bottom=Decimal(4),
+                    padding_left=Decimal(5)
+                ))
                 
         layout.add(table)
+        
+        layout.add(Paragraph(
+            "\nReporte generado automáticamente por el sistema.",
+            font_size=8,
+            font_color=HexColor("808080"),
+            horizontal_alignment=Alignment.CENTERED
+        ))
         
         buffer = BytesIO()
         PDF.dumps(buffer, pdf)
@@ -71,17 +110,15 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
         return buffer
 
     except Exception as e:
-        print(f"Error PDF: {e}")
+        print(f"Error generando PDF Estético: {e}")
         buffer = BytesIO()
         err_pdf = Document()
         err_page = Page()
         err_pdf.append_page(err_page)
-        err_layout = SingleColumnLayout(err_page)
-        err_layout.add(Paragraph(f"Error generando tabla: {str(e)}"))
+        SingleColumnLayout(err_page).add(Paragraph(f"Error visual: {str(e)}"))
         PDF.dumps(buffer, err_pdf)
         buffer.seek(0)
         return buffer
-
 #Hecho por Agustin Nicolás Mancini
 def generar_csv_response(df: pd.DataFrame, filename: str):
     buffer = StringIO()
