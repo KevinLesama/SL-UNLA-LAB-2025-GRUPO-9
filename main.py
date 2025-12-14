@@ -1182,7 +1182,7 @@ def csv_turnos_cancelados_por_mes(db: Session = Depends(get_db)):
     return generar_csv_response(df, nombre)
 
 #Hecho por Agustin Nicolás Mancini
-@app.get("/reportes/csv/turnos-cancelados?min=5")
+@app.get("/reportes/csv/turnos-cancelados")
 def csv_turnos_cancelados(min: int, db: Session = Depends(get_db)):
     data = reportes_turnos_cancelados(min, db)
 
