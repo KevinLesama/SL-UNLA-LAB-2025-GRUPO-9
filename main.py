@@ -6,13 +6,21 @@ from database import SessionLocal, engine
 from datetime import datetime, date, timedelta
 from config import settings
 from utils import calcular_edad, turnoDisponible, turnoDisponibleEstado, MESES_ESPANOL
+import pandas as pd
+from io import BytesIO
 from fastapi.responses import StreamingResponse
-
 import borb as borb
+from borb.pdf.document import Document
+from borb.pdf.page.page import Page
+from borb.pdf.pdf import PDF
+from borb.pdf.canvas.layout.table.table import Table
+from borb.pdf.canvas.layout.text.paragraph import Paragraph
+from borb.pdf.canvas.layout.table.flexible_column_width_table import FlexibleColumnWidthTable
+from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
+from io import StringIO
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
-
 
 def get_db():
     db = SessionLocal()
@@ -20,6 +28,71 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
+    datos_df = datos_df.astype(str)
+    
+    try:
+        pdf = Document()
+        page = Page()
+        pdf.append_page(page)
+        
+        layout = SingleColumnLayout(page)
+        
+        layout.add(Paragraph(titulo, font_size=16))
+        layout.add(Paragraph("\n"))
+
+        num_cols = len(datos_df.columns)
+        num_rows = len(datos_df) + 1
+        
+        if num_cols == 0:
+            layout.add(Paragraph("No hay datos para mostrar."))
+            buffer = BytesIO()
+            PDF.dumps(buffer, pdf)
+            buffer.seek(0)
+            return buffer
+        
+        anchos = [1] * num_cols 
+        table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=num_rows)
+
+        for col in datos_df.columns:
+            table.add(Paragraph(str(col), font_size=10, padding_bottom=5))
+            
+        # Filas
+        for _, row in datos_df.iterrows():
+            for item in row:
+                table.add(Paragraph(item, font_size=8))
+                
+        layout.add(table)
+        
+        buffer = BytesIO()
+        PDF.dumps(buffer, pdf)
+        buffer.seek(0)
+        return buffer
+
+    except Exception as e:
+        print(f"Error PDF: {e}")
+        buffer = BytesIO()
+        err_pdf = Document()
+        err_page = Page()
+        err_pdf.append_page(err_page)
+        err_layout = SingleColumnLayout(err_page)
+        err_layout.add(Paragraph(f"Error generando tabla: {str(e)}"))
+        PDF.dumps(buffer, err_pdf)
+        buffer.seek(0)
+        return buffer
+
+#Hecho por Agustin Nicolás Mancini
+def generar_csv_response(df: pd.DataFrame, filename: str):
+    buffer = StringIO()
+    df.to_csv(buffer, index=False)
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 #Hecho por Kevin Lesama Soto
 @app.get("/personas/")
@@ -931,80 +1004,6 @@ def reportes_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al generar el reporte: {str(e)}")
 
-
-
-import pandas as pd
-from io import BytesIO
-from fastapi.responses import StreamingResponse
-
-
-from borb.pdf.document import Document
-from borb.pdf.page.page import Page
-from borb.pdf.pdf import PDF
-from borb.pdf.canvas.layout.table.table import Table
-from borb.pdf.canvas.layout.text.paragraph import Paragraph
-from borb.pdf.canvas.layout.table.flexible_column_width_table import FlexibleColumnWidthTable
-
-from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
-
-def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
-    datos_df = datos_df.astype(str)
-    
-    try:
-        pdf = Document()
-        page = Page()
-        pdf.append_page(page)
-        
-        layout = SingleColumnLayout(page)
-        
-
-        layout.add(Paragraph(titulo, font_size=16))
-        layout.add(Paragraph("\n"))
-        
-
-        num_cols = len(datos_df.columns)
-        num_rows = len(datos_df) + 1
-        
-        if num_cols == 0:
-            layout.add(Paragraph("No hay datos para mostrar."))
-            buffer = BytesIO()
-            PDF.dumps(buffer, pdf)
-            buffer.seek(0)
-            return buffer
-
-
-        anchos = [1] * num_cols 
-        table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=num_rows)
-        
-
-        for col in datos_df.columns:
-            table.add(Paragraph(str(col), font_size=10, padding_bottom=5))
-            
-        # Filas
-        for _, row in datos_df.iterrows():
-            for item in row:
-                table.add(Paragraph(item, font_size=8))
-                
-        layout.add(table)
-        
-        buffer = BytesIO()
-        PDF.dumps(buffer, pdf)
-        buffer.seek(0)
-        return buffer
-
-    except Exception as e:
-        print(f"Error PDF: {e}")
-        buffer = BytesIO()
-        err_pdf = Document()
-        err_page = Page()
-        err_pdf.append_page(err_page)
-        err_layout = SingleColumnLayout(err_page)
-        err_layout.add(Paragraph(f"Error generando tabla: {str(e)}"))
-        PDF.dumps(buffer, err_pdf)
-        buffer.seek(0)
-        return buffer
-
-
 #hecho por kevin soto lesama
 @app.get("/reportes/pdf/turnos-por-fecha")
 def pdf_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
@@ -1138,3 +1137,68 @@ def pdf_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(get_db)
     df = pd.DataFrame(filas)
     pdf = generar_pdf_borb(df, f"Confirmados: {desde} al {hasta}")
     return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": "inline; filename=confirmados.pdf"})
+
+#Hecho por Agustin Nicolás Mancini
+@app.get("/reportes/csv/turnos-por-fecha")
+def csv_turnos_por_fecha(fecha: str, db: Session = Depends(get_db)):
+    data = reportes_turnos_por_fecha(fecha, db)
+
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Hora": t["hora"],
+                "Estado": t["estado"]
+            })
+
+    df = pd.DataFrame(filas)
+    return generar_csv_response(df, f"turnos_{fecha}.csv")
+
+#Hecho por Agustin Nicolás Mancini
+@app.get("/reportes/csv/turnos-cancelados-por-mes")
+def csv_turnos_cancelados_por_mes(db: Session = Depends(get_db)):
+    data = reportes_turnos_cancelados_por_mes(db)
+
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos_cancelados"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Fecha": t["fecha"],
+                "Hora": t["hora"]
+            })
+
+    df = pd.DataFrame(filas)
+    nombre = f"cancelados_{data['mes']}_{data['anio']}.csv"
+    return generar_csv_response(df, nombre)
+
+#Hecho por Agustin Nicolás Mancini
+@app.get("/reportes/csv/turnos-cancelados?min=5")
+def csv_turnos_cancelados(min: int, db: Session = Depends(get_db)):
+    data = reportes_turnos_cancelados(min, db)
+
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos_cancelados"]:
+            filas.append({
+                "DNI": p["dni"],
+                "Nombre": p["nombre"],
+                "Cantidad Cancelados": p["cantidad_cancelados"],
+                "Fecha": t["fecha"],
+                "Hora": t["hora"]
+            })
+
+    df = pd.DataFrame(filas)
+    return generar_csv_response(df, f"cancelados_min_{min}.csv")
