@@ -23,6 +23,7 @@ from borb.pdf.canvas.layout.layout_element import Alignment
 from borb.pdf.canvas.layout.table.table import TableCell
 from decimal import Decimal
 from borb.pdf.canvas.layout.image.image import Image
+from pathlib import Path
 
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
@@ -35,17 +36,30 @@ def get_db():
         db.close()
 
 def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
-    
     datos_df = datos_df.astype(str)
     
     try:
         pdf = Document()
         page = Page()
         pdf.append_page(page)
+        
         layout = SingleColumnLayout(page, 
                                     vertical_margin=Decimal(40), 
                                     horizontal_margin=Decimal(40))
         
+        ruta_logo = Path("logo_unla.png") 
+        
+        if ruta_logo.exists():
+            layout.add(Image(
+                ruta_logo,
+                width=Decimal(80),   
+                height=Decimal(80), 
+                horizontal_alignment=Alignment.CENTERED,
+                margin_bottom=Decimal(10)
+            ))
+        else:
+            print("AVISO: No se encontró 'logo_unla.png'.")
+
         layout.add(Paragraph(
             titulo, 
             font="Helvetica-Bold", 
@@ -62,22 +76,21 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
             horizontal_alignment=Alignment.CENTERED,
             padding_bottom=Decimal(20)
         ))
-        
+
         num_cols = len(datos_df.columns)
         if num_cols == 0:
-            layout.add(Paragraph("No hay datos para mostrar en este reporte."))
+            layout.add(Paragraph("No hay datos para mostrar."))
             buffer = BytesIO()
             PDF.dumps(buffer, pdf)
             buffer.seek(0)
             return buffer
-
 
         table = FlexibleColumnWidthTable(number_of_columns=num_cols, number_of_rows=len(datos_df) + 1)
         
         for col in datos_df.columns:
             table.add(TableCell(
                 Paragraph(str(col), font="Helvetica-Bold", font_color=HexColor("FFFFFF"), font_size=10),
-                background_color=HexColor("585858"), # Gris Oscuro
+                background_color=HexColor("585858"), 
                 padding_top=Decimal(5),
                 padding_bottom=Decimal(5),
                 padding_left=Decimal(5)
@@ -85,7 +98,6 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
             
         for i, row in datos_df.iterrows():
             bg_color = HexColor("FFFFFF") if i % 2 == 0 else HexColor("F2F2F2")
-            
             for item in row:
                 table.add(TableCell(
                     Paragraph(item, font_size=9),
@@ -98,10 +110,11 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
         layout.add(table)
         
         layout.add(Paragraph(
-            "\nReporte generado automáticamente por el sistema.",
+            "\nUniversidad Nacional de Lanús - Sistema de Turnos",
             font_size=8,
             font_color=HexColor("808080"),
-            horizontal_alignment=Alignment.CENTERED
+            horizontal_alignment=Alignment.CENTERED,
+            padding_top=Decimal(20)
         ))
         
         buffer = BytesIO()
@@ -110,12 +123,12 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
         return buffer
 
     except Exception as e:
-        print(f"Error generando PDF Estético: {e}")
+        print(f"Error generando PDF: {e}")
         buffer = BytesIO()
         err_pdf = Document()
         err_page = Page()
         err_pdf.append_page(err_page)
-        SingleColumnLayout(err_page).add(Paragraph(f"Error visual: {str(e)}"))
+        SingleColumnLayout(err_page).add(Paragraph(f"Error: {str(e)}"))
         PDF.dumps(buffer, err_pdf)
         buffer.seek(0)
         return buffer
