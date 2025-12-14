@@ -1202,3 +1202,81 @@ def csv_turnos_cancelados(min: int, db: Session = Depends(get_db)):
 
     df = pd.DataFrame(filas)
     return generar_csv_response(df, f"cancelados_min_{min}.csv")
+
+
+#Hecho por Orion Quimey Jaime Adell
+@app.get("/reportes/csv/turnos-por-persona")
+def csv_turnos_por_persona(dni: int, db: Session = Depends(get_db)):
+    data = reportes_turnos_por_persona(dni, db)
+    
+    filas = []
+    for t in data["turnos"]:
+        filas.append({
+            "Fecha": t["fecha"],
+            "Hora": t["hora"],
+            "Estado": t["estado"]
+        })
+        
+    if not filas:
+        raise HTTPException(status_code=404, detail="La persona no tiene turnos.")
+        
+    df = pd.DataFrame(filas)
+    csv_content = df.to_csv(index=False, sep=";")
+    
+    return StreamingResponse(
+        iter([csv_content]), 
+        media_type="text/csv", 
+        headers={"Content-Disposition": f"attachment; filename=turnos_persona_{dni}.csv"}
+    )
+
+#Hecho por Orion Quimey Jaime Adell
+@app.get("/reportes/csv/estado-personas")
+def csv_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
+    lista_personas = reporte_estado_personas(habilitada, db)
+    
+    if not lista_personas:
+        estado = "habilitadas" if habilitada else "inhabilitadas"
+        raise HTTPException(status_code=404, detail=f"No hay personas {estado}")
+        
+    df = pd.DataFrame(lista_personas)
+    
+    # Filtrar solo las columnas relevantes
+    cols_a_mostrar = ["dni", "nombre", "email", "telefono", "edad"]
+    cols_finales = [c for c in cols_a_mostrar if c in df.columns]
+    df = df[cols_finales]
+    
+    estado_str = "Habilitadas" if habilitada else "Inhabilitadas"
+    csv_content = df.to_csv(index=False, sep=";")
+    
+    return StreamingResponse(
+        iter([csv_content]), 
+        media_type="text/csv", 
+        headers={"Content-Disposition": f"attachment; filename=personas_{estado_str}.csv"}
+    )
+    
+#Hecho por Orion Quimey Jaime Adell
+@app.get("/reportes/csv/turnos-confirmados")
+def csv_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(get_db)):
+    data = reportes_turnos_confirmados(desde, hasta, db)
+    
+    if "mensaje" in data:
+        raise HTTPException(status_code=404, detail=data["mensaje"])
+        
+    filas = []
+    for p in data["personas"]:
+        for t in p["turnos"]:
+            filas.append({
+                "DNI": p["persona_dni"],
+                "Nombre": p["persona_nombre"],
+                "Fecha": t["fecha"],
+                "Hora": t["hora"]
+            })
+            
+    df = pd.DataFrame(filas)
+    csv_content = df.to_csv(index=False, sep=";")
+    
+    return StreamingResponse(
+        iter([csv_content]), 
+        media_type="text/csv", 
+        headers={"Content-Disposition": "attachment; filename=confirmados.csv"}
+    )
