@@ -1293,7 +1293,7 @@ def csv_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
         
     df = pd.DataFrame(lista_personas)
     
-    # Filtrar solo las columnas relevantes
+    
     cols_a_mostrar = ["dni", "nombre", "email", "telefono", "edad"]
     cols_finales = [c for c in cols_a_mostrar if c in df.columns]
     df = df[cols_finales]
