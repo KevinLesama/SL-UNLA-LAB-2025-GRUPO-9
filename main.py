@@ -148,6 +148,7 @@ def generar_csv_response(df: pd.DataFrame, filename: str):
     )
 
 #Hecho por Kevin Lesama Soto
+"""
 @app.get("/personas/")
 def listar_personas(db: Session = Depends(get_db)):
     try:
@@ -171,7 +172,47 @@ def listar_personas(db: Session = Depends(get_db)):
         return resultado
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de personas: {str(e)}")
+"""
 
+# DESPUÉS (Con paginación y metadatos)
+@app.get("/personas/")
+def listar_personas(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        total_personas = db.query(Persona).count()
+        
+        personas_paginadas = db.query(Persona).offset(skip).limit(limit).all() 
+
+        resultado = []
+        for p in personas_paginadas:
+            try:
+                edad = calcular_edad(p.fecha_de_nacimiento) if p.fecha_de_nacimiento else None
+            except Exception:
+                edad = None
+            resultado.append({
+                "id": p.id,
+                "dni": p.dni,
+                "nombre": p.nombre,
+                "email": p.email,
+                "telefono": p.telefono,
+                "fecha_de_nacimiento": p.fecha_de_nacimiento.isoformat() if p.fecha_de_nacimiento else None,
+                "edad": edad,
+                "habilitado": p.habilitado
+            })
+            
+
+        return {
+            "total": total_personas,
+            "skip": skip,
+            "limit": limit,
+            "data": resultado
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de personas: {str(e)}")
 #Hecho por Kevin Lesama Soto
 @app.get("/personas/{id}")
 def obtener_persona(id: int, db: Session = Depends(get_db)):
@@ -330,6 +371,7 @@ def eliminar_persona(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al eliminar la persona: {str(e)}")
 
 #Hecho por Agustin Nicolas Mancini
+"""
 @app.get("/turnos/")
 def listar_turnos(db: Session = Depends(get_db)):
     try:
@@ -347,7 +389,39 @@ def listar_turnos(db: Session = Depends(get_db)):
         return resultado
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de turnos: {str(e)}")
-
+"""
+# DESPUÉS (Con paginación y metadatos)
+@app.get("/turnos/")
+def listar_turnos(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        total_turnos = db.query(Turnos).count()
+        
+        turnos_paginados = db.query(Turnos).offset(skip).limit(limit).all()
+        
+        resultado = [
+            {
+                "id": t.id,
+                "fecha": t.fecha.isoformat(),
+                "hora": t.hora,
+                "estado": t.estado,
+                "persona_id": t.persona_id
+            }
+            for t in turnos_paginados
+        ]
+        
+        return {
+            "total": total_turnos,
+            "skip": skip,
+            "limit": limit,
+            "data": resultado
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de turnos: {str(e)}")
 #Hecho por Agustin Nicolas Mancini
 @app.get("/turnos/{id}")
 def obtener_turno(id: int, db: Session = Depends(get_db)):
