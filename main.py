@@ -35,6 +35,7 @@ def get_db():
     finally:
         db.close()
 
+#Hecho por Kevin Soto Lesama
 def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
     datos_df = datos_df.astype(str)
     
@@ -132,6 +133,8 @@ def generar_pdf_borb(datos_df: pd.DataFrame, titulo: str) -> BytesIO:
         PDF.dumps(buffer, err_pdf)
         buffer.seek(0)
         return buffer
+    
+    
 #Hecho por Agustin Nicolás Mancini
 def generar_csv_response(df: pd.DataFrame, filename: str):
     buffer = StringIO()
