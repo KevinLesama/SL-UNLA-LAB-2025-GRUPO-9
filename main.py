@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, status, Depends
+from fastapi import FastAPI, HTTPException, Request, status, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from models import Persona, Turnos, Base
@@ -146,39 +146,11 @@ def generar_csv_response(df: pd.DataFrame, filename: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
-
-#Hecho por Kevin Lesama Soto
-"""
-@app.get("/personas/")
-def listar_personas(db: Session = Depends(get_db)):
-    try:
-        personas = db.query(Persona).all()
-        resultado = []
-        for p in personas:
-            try:
-                edad = calcular_edad(p.fecha_de_nacimiento) if p.fecha_de_nacimiento else None
-            except Exception:
-                edad = None
-            resultado.append({
-                "id": p.id,
-                "dni": p.dni,
-                "nombre": p.nombre,
-                "email": p.email,
-                "telefono": p.telefono,
-                "fecha_de_nacimiento": p.fecha_de_nacimiento.isoformat() if p.fecha_de_nacimiento else None,
-                "edad": edad,
-                "habilitado": p.habilitado
-            })
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de personas: {str(e)}")
-"""
-
-# DESPUÉS (Con paginación y metadatos)
-@app.get("/personas/")
+# Hecho por Kevin Lesama Soto
+@app.get("/personas")
 def listar_personas(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Número de registros a omitir (offset)"),
+    limit: int = Query(100, gt=0, le=200, description="Máximo número de registros a devolver (limit)"),
     db: Session = Depends(get_db)
 ):
     try:
@@ -192,6 +164,7 @@ def listar_personas(
                 edad = calcular_edad(p.fecha_de_nacimiento) if p.fecha_de_nacimiento else None
             except Exception:
                 edad = None
+                
             resultado.append({
                 "id": p.id,
                 "dni": p.dni,
@@ -203,7 +176,6 @@ def listar_personas(
                 "habilitado": p.habilitado
             })
             
-
         return {
             "total": total_personas,
             "skip": skip,
@@ -370,42 +342,24 @@ def eliminar_persona(id: int, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al eliminar la persona: {str(e)}")
 
-#Hecho por Agustin Nicolas Mancini
-"""
-@app.get("/turnos/")
-def listar_turnos(db: Session = Depends(get_db)):
-    try:
-        turnos = db.query(Turnos).all()
-        resultado = [
-            {
-                "id": t.id,
-                "fecha": t.fecha.isoformat(),
-                "hora": t.hora,
-                "estado": t.estado,
-                "persona_id": t.persona_id
-            }
-            for t in turnos
-        ]
-        return resultado
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ocurrió un error al recuperar el listado de turnos: {str(e)}")
-"""
-# DESPUÉS (Con paginación y metadatos)
-@app.get("/turnos/")
+# Hecho por Agustin Nicolas Mancini
+@app.get("/turnos")
 def listar_turnos(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Número de registros a omitir (offset)"),
+    limit: int = Query(100, gt=0, le=200, description="Máximo número de registros a devolver (limit)"),
     db: Session = Depends(get_db)
 ):
     try:
         total_turnos = db.query(Turnos).count()
         
+
         turnos_paginados = db.query(Turnos).offset(skip).limit(limit).all()
         
+
         resultado = [
             {
                 "id": t.id,
-                "fecha": t.fecha.isoformat(),
+                "fecha": t.fecha.isoformat() if t.fecha else None, 
                 "hora": t.hora,
                 "estado": t.estado,
                 "persona_id": t.persona_id
