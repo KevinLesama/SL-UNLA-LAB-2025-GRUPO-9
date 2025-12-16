@@ -212,7 +212,7 @@ def obtener_persona(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener la persona: {str(e)}")
 
 #Hecho por Kevin Lesama Soto
-@app.post("/personas/")
+@app.post("/personas")
 async def crear_persona(request: Request, db: Session = Depends(get_db)):
     try:
         datos = await request.json()
@@ -397,7 +397,7 @@ def obtener_turno(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Ocurrió un error al obtener el turno: {str(e)}")
 
 #Hecho por Agustin Nicolas Mancini
-@app.post("/turnos/", status_code=status.HTTP_201_CREATED)
+@app.post("/turnos", status_code=status.HTTP_201_CREATED)
 async def crear_turno(request: Request, db: Session = Depends(get_db)):
     try:
         datos = await request.json()
@@ -1302,7 +1302,7 @@ def csv_turnos_por_persona(dni: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="La persona no tiene turnos.")
         
     df = pd.DataFrame(filas)
-    csv_content = df.to_csv(index=False, sep=";")
+    csv_content = df.to_csv(index=False, sep=",")
     
     return StreamingResponse(
         iter([csv_content]), 
@@ -1327,7 +1327,7 @@ def csv_estado_personas(habilitada: bool, db: Session = Depends(get_db)):
     df = df[cols_finales]
     
     estado_str = "Habilitadas" if habilitada else "Inhabilitadas"
-    csv_content = df.to_csv(index=False, sep=";")
+    csv_content = df.to_csv(index=False, sep=",")
     
     return StreamingResponse(
         iter([csv_content]), 
@@ -1354,7 +1354,7 @@ def csv_turnos_confirmados(desde: str, hasta: str, db: Session = Depends(get_db)
             })
             
     df = pd.DataFrame(filas)
-    csv_content = df.to_csv(index=False, sep=";")
+    csv_content = df.to_csv(index=False, sep=",")
     
     return StreamingResponse(
         iter([csv_content]), 
